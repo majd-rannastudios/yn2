@@ -92,6 +92,14 @@ then ruin-and-recreate, under a time budget. It optimises four things at once:
    different circles. They can talk at the office.
 4. **Everybody moves** — nobody is handed the same colour twice running.
 
+In a full room all four hold at once. In a small one they collide, and meeting
+new people wins over changing colour: with two colours, every fresh pairing
+puts one person from each old group together, so one of them keeps their
+colour. When moving outranked meeting, four people on two circles walked the
+floor as two fixed couples and never met anyone new. For a small test, give
+it more colours than you think — eight people on four circles of two works
+far better than eight on two circles of four.
+
 ### The one rule that decides whether this works
 
 **A repeat-free round is only possible when the group size is no larger than the

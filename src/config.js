@@ -50,14 +50,22 @@ export const QUESTIONS = [
 ];
 
 // Assignment cost weights. Tune here, not in the algorithm.
+//
+// Only the ratios matter. In a big room all three are satisfied at once (zero
+// repeats, zero colleagues, everyone changes colour). In a small one they
+// collide, and the order below decides who wins: meeting someone new beats
+// changing colour. With two colours it has to - every fresh pairing puts one
+// person from each old group together, so one of them keeps their colour.
+// When moving outranked meeting, four people on two colours walked the floor
+// as two fixed couples, swapping circles and never meeting anyone new.
 export const WEIGHTS = {
-  // Cost of sharing a circle with someone you already met. Superlinear, so a
-  // necessary second meeting is tolerated but a third is fought hard.
-  repeat: 12,
   // Cost of sharing a circle with a colleague from the same company. They can
   // talk at the office; the point of the night is everyone else.
-  sameCompany: 25,
-  // Cost of being handed the same colour two rounds running. Near-hard: the
-  // whole activation depends on people physically moving.
-  stayPut: 400
+  sameCompany: 400,
+  // Cost of sharing a circle with someone you already met. Superlinear, so a
+  // necessary second meeting is tolerated but a third is fought hard.
+  repeat: 200,
+  // Cost of being handed the same colour two rounds running. The room should
+  // visibly reshuffle, but staying on a circle to meet new people is fine.
+  stayPut: 50
 };
