@@ -30,7 +30,17 @@
     <h1 class="hero-title">Spin The Wheel<span>Colors</span></h1>
     <p class="hero-sub">Spin for a colour, walk to that circle, and meet the people waiting there. New colour every few minutes.</p>
 
-    <form id="join-form">
+    <!-- The door for Yarnoo members. Which doors are open comes from /api/config. -->
+    <div class="signin" id="signin" hidden>
+      <p class="auth-error" id="auth-error" role="alert" hidden></p>
+      <a class="btn-yarnoo" id="yarnoo-btn" href="/auth/yarnoo/start">
+        <img src="/brand/yarnoo-mark-magenta.svg" alt="">Continue with Yarnoo
+      </a>
+      <p class="consent">We use your Yarnoo name, photo, role and company to seat you away from your own colleagues and to introduce you to your group - and afterwards, so the people you met can find you on Yarnoo. Nothing is shared beyond this event.</p>
+      <button class="ghost block" type="button" id="walkin-btn" hidden>No Yarnoo account? Join as a guest</button>
+    </div>
+
+    <form id="join-form" hidden>
       <div class="field">
         <label for="f-name">Your name</label>
         <input id="f-name" name="name" autocomplete="given-name" required maxlength="60" placeholder="e.g. Sara">
@@ -102,6 +112,11 @@
       <div class="stat-strip" style="width:100%">
         <div class="stat"><b id="wait-met">0</b><span>people met</span></div>
         <div class="stat"><b id="wait-rounds">0</b><span>rounds</span></div>
+      </div>
+      <!-- After the last round: everyone this guest met, linked to their Yarnoo profiles. -->
+      <div class="met-block" id="met-block" hidden>
+        <div class="eyebrow">People you met</div>
+        <ul class="people" id="met-list"></ul>
       </div>
     </div>
   </section>

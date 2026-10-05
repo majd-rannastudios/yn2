@@ -4,8 +4,8 @@ const PIN = process.env.PIN || '1234';
 const j = (p,o) => fetch(BASE+p,o).then(async r => ({ ok:r.ok, body: await r.json().catch(()=>null) }));
 
 const PEOPLE = [
-  ['Sara Haddad','Ranna Studios','Creative Director'],
-  ['Omar Khalil','Ranna Studios','Producer'],
+  ['Sara Haddad','Yarnoo','Community Lead'],
+  ['Omar Khalil','Yarnoo','Producer'],
   ['Lin Zhao','Meridian Bank','Head of Brand'],
   ['Karim Nasr','Meridian Bank','Marketing Lead'],
   ['Maya Fares','Northwind Group','CEO'],
@@ -41,7 +41,7 @@ const PEOPLE = [
   const A=(p,b)=>j(p,{method:b?'POST':'GET',headers:{'content-type':'application/json','x-admin-token':admin},body:b?JSON.stringify(b):undefined});
 
   await A('/api/admin/action',{action:'reset'});
-  await A('/api/admin/config',{ name:'Ranna Networking Night', colorCount:6, roundMinutes:10, huddleSize:5 });
+  await A('/api/admin/config',{ name:'Yarnoo Community Night', colorCount:5, roundMinutes:10, huddleSize:5 });
 
   for (const [name,company,role] of PEOPLE) {
     await j('/api/join',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({name,company,role})});

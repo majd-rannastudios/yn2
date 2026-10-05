@@ -15,12 +15,12 @@
  * Lilac and Coral are decoration, never small text. On Yellow, Pink and white
  * the ink is magenta - white text on them fails.
  *
- * THE CIRCLE COLOURS are not Yarnoo, deliberately. They live in src/config.js
- * and are plain primaries because they are wayfinding: a guest has to spot their
- * circle across a dark room and say its name to a stranger. They arrive as
- * inline styles, so nothing here defines one - but several of them (Purple
- * 1.2:1, Red 1.5:1, Blue 1.7:1) vanish against magenta, so every shape that
- * carries one gets a white edge.
+ * THE CIRCLE COLOURS are the five Yarnoo colours - Magenta, Yellow, Lilac,
+ * Coral, Pink - defined once, in src/config.js, with the ink that reads on each.
+ * They arrive as inline styles, so nothing here defines one. Because one of
+ * them is the page itself (a Magenta circle on a Magenta stage) and Pink sits
+ * close to Lilac, every shape that carries a circle colour - wheel segments,
+ * the result card, avatars, meters, projector dots - gets a white edge.
  *
  * Type: Bricolage Grotesque 72pt Bold for headlines, Onest for everything else
  * (400 body, 600 calls to action, 800 subheads) - the Playbook hierarchy.
@@ -65,6 +65,7 @@
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+[hidden] { display: none !important; }
 
 html, body {
   min-height: 100%;
@@ -234,6 +235,46 @@ label .muted { font-weight: 400; }
 .hero-sub { color: var(--muted); margin-bottom: 24px; font-size: 15.5px; }
 .consent { font-size: 12.5px; color: var(--faint); margin-top: 14px; line-height: 1.5; }
 
+/* The members' door. Same yellow pill as every call to action, carrying the
+   mark so it reads as Yarnoo's own sign-in at a glance. */
+.signin { display: flex; flex-direction: column; }
+.btn-yarnoo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-family: var(--font);
+  font-size: 17px;
+  font-weight: 600;
+  text-decoration: none;
+  background: var(--yellow);
+  color: var(--magenta);
+  border-radius: 999px;
+  padding: 16px 28px;
+  transition: transform 0.12s ease;
+}
+.btn-yarnoo:active { transform: scale(0.97); }
+.btn-yarnoo:focus-visible { outline: 3px solid var(--white); outline-offset: 3px; }
+.btn-yarnoo img { height: 24px; width: auto; }
+.signin .ghost { margin-top: 18px; }
+/* A walk-in opened the guest form under the members' door. */
+.signin:not([hidden]) + #join-form { margin-top: 22px; }
+
+.auth-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: var(--white);
+  color: var(--magenta);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.4;
+  border-radius: 16px;
+  padding: 12px 14px;
+  margin-bottom: 14px;
+}
+.auth-error::before { content: ''; flex: none; width: 9px; height: 9px; margin-top: 5px; border-radius: 50%; background: var(--coral); }
+
 /* --- wheel ---------------------------------------------------------------- */
 
 .wheel-stage {
@@ -366,8 +407,28 @@ label .muted { font-weight: 400; }
   font-weight: 800;
   font-size: 13px;
 }
+.avatar { overflow: hidden; }
+.avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.person-text { flex: 1; min-width: 0; }
 .person-name { font-weight: 600; font-size: 15.5px; }
-.person-meta { font-size: 13px; color: var(--muted); }
+.person-meta { font-size: 13px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Their Yarnoo profile: the Playbook's round arrow button. */
+.person-link {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--white);
+  display: grid;
+  place-items: center;
+  transition: transform 0.12s ease;
+}
+.person-link:active { transform: scale(0.92); }
+.person-link:focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
+.person-link svg { width: 18px; height: 18px; fill: none; stroke: var(--magenta); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+
+.met-block { width: 100%; margin-top: 8px; }
 
 .stat-strip { display: flex; gap: 10px; margin-top: 16px; }
 .stat {

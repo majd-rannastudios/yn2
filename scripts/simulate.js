@@ -1,5 +1,5 @@
 import { assignRound, planGroups, pairKey } from '../src/assign.js';
-const N=Number(process.env.GUESTS||180), COLORS=Number(process.env.COLORS||8), R=Number(process.env.ROUNDS||8);
+const N=Number(process.env.GUESTS||180), COLORS=Number(process.env.COLORS||5), R=Number(process.env.ROUNDS||8);
 const COMPANIES=['A','B','C','D','E','F'];
 
 function room(){

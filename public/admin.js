@@ -35,6 +35,7 @@
     fillColorSelect();
     render(await res.json());
     loadQr();
+    loadSignin();
     connect();
     setInterval(paintTimer, 1000);
   }
@@ -174,7 +175,9 @@
       const c = g.color !== null && colors[g.color] ? colors[g.color] : null;
       return `<tr>
         <td><span class="dot" style="background:${g.active ? 'var(--yellow)' : 'rgba(255,255,255,0.25)'}"></span></td>
-        <td>${esc(g.name)}</td>
+        <td>${esc(g.name)}${g.profileUrl
+          ? ` <a class="tag" href="${esc(g.profileUrl)}" target="_blank" rel="noopener noreferrer">Yarnoo ↗</a>`
+          : g.yarnooId ? ' <span class="tag">Yarnoo</span>' : ''}</td>
         <td class="muted">${esc(g.company)}</td>
         <td class="muted">${esc(g.role)}</td>
         <td>${c ? `<span class="dot" style="background:${c.hex}"></span> ${c.name}` : '<span class="muted">—</span>'}</td>
@@ -206,6 +209,16 @@
 
   const esc = s => String(s || '').replace(/[&<>"]/g, c =>
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+  // Which doors the guest page offers - worth seeing before the room fills.
+  async function loadSignin() {
+    const { auth } = await (await fetch('/api/config')).json();
+    $('signin-mode').textContent = {
+      required: 'Guests sign in with Yarnoo - members only.',
+      optional: 'Guests sign in with Yarnoo, or join as walk-ins.',
+      off: 'Yarnoo sign-in is off - guests type their own name.'
+    }[auth] || '';
+  }
 
   async function loadQr() {
     const { url, dataUrl } = await (await api('/api/admin/qr')).json();

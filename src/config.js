@@ -1,26 +1,27 @@
-// Circle colours.
+// Circle colours: the five Yarnoo colours, and only those.
 //
-// These are deliberately NOT the Ranna palette. They are wayfinding, not
-// branding: a guest has to spot their circle across a dark room full of people
-// and say the name out loud to a stranger. That wants plain, primary, unarguable
-// colours - everybody already knows what blue means, and nobody has to be told
-// which circle is "Veil of Becoming". The app around them carries the brand.
+// Yarnoo's call - the circles on the floor are part of the event's look, so they
+// are the Playbook palette rather than generic primaries. The names are the
+// short ones a guest can say out loud to a stranger ("I'm Pink"), not the
+// Playbook's full names.
 //
 // Ordered by how far apart they read: the operator picks how many circles are in
-// play and gets the first N, so a four-circle event gets red/blue/yellow/green -
-// the four most separable colours there are.
+// play and gets the first N, so a smaller room still gets the most separable
+// set. Measured (CIE76 dE): Magenta/Yellow 131 is the widest pair; Pink/Lilac 26
+// is the closest, which is why Pink comes last - physical Pink and Lilac circles
+// are the two to light well and keep apart on the floor.
+//
+// `ink` is the text colour on each: white on Magenta (7.1:1); on the light four
+// a deep magenta (#5A093F), because brand magenta on Coral is only 2.5:1.
 export const PALETTE = [
-  { id: 'red',    name: 'Red',    hex: '#E02B20', ink: '#FFFFFF' },
-  { id: 'blue',   name: 'Blue',   hex: '#1F7FD4', ink: '#FFFFFF' },
-  { id: 'yellow', name: 'Yellow', hex: '#FFC613', ink: '#2A1F00' },
-  { id: 'green',  name: 'Green',  hex: '#3FAE49', ink: '#FFFFFF' },
-  { id: 'purple', name: 'Purple', hex: '#8B44AD', ink: '#FFFFFF' },
-  { id: 'orange', name: 'Orange', hex: '#F5821F', ink: '#2A1400' },
-  { id: 'teal',   name: 'Teal',   hex: '#00A79D', ink: '#FFFFFF' },
-  { id: 'pink',   name: 'Pink',   hex: '#EC4899', ink: '#FFFFFF' }
+  { id: 'magenta', name: 'Magenta', hex: '#A51374', ink: '#FFFFFF' },
+  { id: 'yellow',  name: 'Yellow',  hex: '#FDEE4D', ink: '#5A093F' },
+  { id: 'lilac',   name: 'Lilac',   hex: '#AFA6FF', ink: '#5A093F' },
+  { id: 'coral',   name: 'Coral',   hex: '#FF656C', ink: '#5A093F' },
+  { id: 'pink',    name: 'Pink',    hex: '#FFB4FB', ink: '#5A093F' }
 ];
 
-export const DEFAULT_COLOR_COUNT = 6;
+export const DEFAULT_COLOR_COUNT = 5;
 export const DEFAULT_ROUND_MINUTES = 10;
 
 // Icebreakers. Each circle gets a different one each round, so nobody is asked

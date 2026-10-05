@@ -5,7 +5,7 @@ const PIN = process.env.PIN || '1234';
 const j = (p, o) => fetch(BASE + p, o).then(async r => ({ ok: r.ok, status: r.status, body: await r.json().catch(() => null) }));
 
 const NAMES = ['Sara','Omar','Lin','Karim','Maya','Youssef','Nadia','Tarek','Rania','Ali','Dana','Hadi','Leila','Sami','Rana','Fadi','Zeina','Marc','Nour','Jad','Hala','Ziad','Mira','Wael','Yara','Bilal','Lara','Amir','Nay','Rami','Tala','Karl','Joelle','Fouad','Sana','Elie','Maha','Ghassan','Rita','Kamal'];
-const COMPANIES = ['Ranna Studios','Acme','Globex','Initech','Umbrella','Nova'];
+const COMPANIES = ['Yarnoo','Acme','Globex','Initech','Umbrella','Nova'];
 
 (async () => {
   let fails = 0;
@@ -21,7 +21,7 @@ const COMPANIES = ['Ranna Studios','Acme','Globex','Initech','Umbrella','Nova'];
   const A = (p, body) => j(p, { method: body ? 'POST':'GET', headers:{'content-type':'application/json','x-admin-token':admin}, body: body?JSON.stringify(body):undefined });
 
   await A('/api/admin/action', { action:'reset' });
-  await A('/api/admin/config', { colorCount: 6, roundMinutes: 10, huddleSize: 5 });
+  await A('/api/admin/config', { colorCount: 5, roundMinutes: 10, huddleSize: 5 });
 
   const bad = await j('/api/admin/state', { headers: { 'x-admin-token':'nope' } });
   check('admin routes reject a bad token', bad.status === 401);

@@ -38,6 +38,43 @@
 
   // --- join ---------------------------------------------------------------
 
+  // Coming back from Yarnoo sign-in: the server hands over this guest's token,
+  // or the reason it could not, in the URL fragment. Take it and wipe the URL
+  // so a token never sits in history or gets shared with a screenshot.
+  const handoff = new URLSearchParams(location.hash.slice(1));
+  if (handoff.has('token') || handoff.has('auth_error')) {
+    history.replaceState(null, '', location.pathname + location.search);
+    if (handoff.get('token')) {
+      token = handoff.get('token');
+      localStorage.setItem('stw-token', token);
+    }
+  }
+
+  const SIGNIN_ERRORS = {
+    expired: 'That sign-in took too long. Tap Continue with Yarnoo again.',
+    already_used: 'That sign-in link was already used. Tap Continue with Yarnoo again.',
+    not_registered: 'Your Yarnoo account is not registered for this event. Check with the host at the door.',
+    event_ended: 'This event has finished.',
+    state_mismatch: 'Sign-in got crossed with another tab. Tap Continue with Yarnoo again.',
+    access_denied: 'Sign-in was cancelled.'
+  };
+  const authError = handoff.get('auth_error');
+  if (authError) {
+    $('auth-error').textContent = SIGNIN_ERRORS[authError] || 'We could not confirm your Yarnoo sign-in. Please try again.';
+    $('auth-error').hidden = false;
+  }
+
+  // Which doors are open is the server's call: Yarnoo members only, members
+  // plus walk-ins, or the plain form when Yarnoo sign-in is not set up.
+  const showForm = () => { $('join-form').hidden = false; $('walkin-btn').hidden = true; };
+  fetch('/api/config').then(r => r.json()).then(cfg => {
+    if (cfg.auth === 'off') return showForm();
+    $('signin').hidden = false;
+    $('yarnoo-btn').href = cfg.signinPath;
+    $('walkin-btn').hidden = cfg.auth !== 'optional';
+  }).catch(showForm);
+  $('walkin-btn').addEventListener('click', showForm);
+
   $('join-form').addEventListener('submit', async e => {
     e.preventDefault();
     // First real gesture of the session - the only moment a browser will let
@@ -162,6 +199,53 @@
 
   const initials = name => name.trim().split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase();
 
+  /**
+   * One person in a group or in the wrap-up: their Yarnoo photo (initials until
+   * it loads, or if there is none), name, role, and a link to their profile.
+   * Built with DOM calls, never innerHTML - names and links are other people's
+   * data.
+   */
+  function personRow(p, color) {
+    const li = document.createElement('li');
+    li.className = 'person';
+
+    const avatar = document.createElement('div');
+    avatar.className = 'avatar';
+    avatar.style.background = color.hex;
+    avatar.style.color = color.ink;
+    avatar.textContent = initials(p.name);
+    if (p.avatarUrl) {
+      const img = new Image();
+      img.alt = '';
+      img.referrerPolicy = 'no-referrer';
+      img.onload = () => avatar.replaceChildren(img);
+      img.src = p.avatarUrl;
+    }
+
+    const text = document.createElement('div');
+    text.className = 'person-text';
+    const name = document.createElement('div');
+    name.className = 'person-name';
+    name.textContent = p.name;
+    const meta = document.createElement('div');
+    meta.className = 'person-meta';
+    meta.textContent = [p.role, p.company].filter(Boolean).join(' · ');
+    text.append(name, meta);
+    li.append(avatar, text);
+
+    if (p.profileUrl) {
+      const link = document.createElement('a');
+      link.className = 'person-link';
+      link.href = p.profileUrl;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      link.setAttribute('aria-label', `${p.name} on Yarnoo`);
+      link.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M9 7h8v8"/></svg>';
+      li.append(link);
+    }
+    return li;
+  }
+
   function renderResult() {
     const a = view.assignment;
     if (!a) return;
@@ -185,16 +269,7 @@
       $('people-block').style.display = 'none';
     } else {
       $('people-block').style.display = '';
-      for (const p of a.huddle) {
-        const li = document.createElement('li');
-        li.className = 'person';
-        const meta = [p.role, p.company].filter(Boolean).join(' · ');
-        li.innerHTML = `<div class="avatar" style="background:${a.color.hex};color:${a.color.ink}">${initials(p.name)}</div>
-          <div><div class="person-name"></div><div class="person-meta"></div></div>`;
-        li.querySelector('.person-name').textContent = p.name;
-        li.querySelector('.person-meta').textContent = meta;
-        list.appendChild(li);
-      }
+      for (const p of a.huddle) list.appendChild(personRow(p, a.color));
     }
 
     $('stat-met').textContent = view.metCount;
@@ -243,10 +318,14 @@
       $('wait-text').textContent = `You met ${view.metCount} people across ${view.me.rounds} rounds. Nicely done.`;
       $('wait-met').textContent = view.metCount;
       $('wait-rounds').textContent = view.me.rounds;
+      const met = view.met || [];
+      $('met-block').hidden = met.length === 0;
+      $('met-list').replaceChildren(...met.map(p => personRow(p, { hex: '#FFFFFF', ink: '#A51374' })));
       show('wait');
       return;
     }
 
+    $('met-block').hidden = true;
     if (!view.assignment) {
       $('wait-title').textContent = view.event.status === 'paused' ? 'Hold on' : 'You are in';
       $('wait-text').textContent = view.event.status === 'paused'

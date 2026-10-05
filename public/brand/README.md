@@ -1,17 +1,33 @@
 # Brand assets
 
-**`logo.png`** — the Ranna Studios lockup, white/reversed, used in the navbar on
-every page and on the projector view.
+Everything here is Yarnoo, taken from the Yarnoo Brand Playbook and its source
+files (`RS 2025/05_PROJECTS/INTERNAL/Yarnoo/Branding` on the shared drive).
 
-Exported from `RS - Branding/new/new logo ranna-01.png` in the shared drive. The
-source is a 4500x4500 canvas with the artwork floating in the middle; it was
-cropped to the artwork bounds (x 424, y 1778, 3652 x 946) and scaled to
-1000 x 259. Cropping matters — served uncropped, the transparent padding
-shrinks the logo to a speck inside its box.
+| File | What | Where it is used |
+|---|---|---|
+| `yarnoo-logo-white.svg` | horizontal lockup, white | navbar on every page, projector |
+| `yarnoo-logo-magenta.svg` | horizontal lockup, Spotlight Magenta | for light grounds |
+| `yarnoo-logo-stacked-*.svg` | stacked lockup | spare |
+| `yarnoo-logo-descriptor-*.svg` | lockup with "Your directory to Arab talent" | spare |
+| `yarnoo-logo-arabic-*.svg` | Arabic lockup | spare |
+| `yarnoo-mark-white.svg` | the Yarnoo Mark alone, white | page supergraphic |
+| `yarnoo-mark-magenta.svg` | the Yarnoo Mark alone, magenta | wheel hub, sign-in button |
+| `yarnoo-icon.svg`, `favicon-32.png`, `apple-touch-icon.png`, `yarnoo-icon-192.png` | white mark on a magenta rounded square | browser tab, home screen |
+| `fonts/bricolage-grotesque-72pt-bold.woff2` | headline face | `style.css` |
+| `fonts/onest-{400,500,600,700,800}.woff2` | text face | `style.css` |
 
-The artwork is pure white with an alpha channel, which is what the dark
-interface wants. To swap in a new version, keep it white/reversed and keep it
-tightly cropped.
+The SVGs are the Playbook's own vector files (`Yarnoo-06`, `-02`, `-04`,
+`-08-arabic`, `-10`), recoloured to a single fill and **cropped to the artwork**:
+the sources sit in the middle of a 1080 x 1080 canvas, and served uncropped the
+empty canvas shrinks the logo to a speck inside its box. The fonts are the
+brand's TTFs converted to woff2, unmodified.
 
-If the file is ever missing, every page falls back to a text wordmark, so
-nothing breaks — it just stops being the real mark.
+Logo rules from the Playbook: white on magenta, photos and dark grounds;
+original magenta on light grounds; never magenta on magenta; never smaller than
+**55px tall** on screen; keep clear space of at least the mark's small triangle
+on every side.
+
+`/brand/` is served with a 24-hour cache, unlike the rest of `public/`. Replace
+an asset under a **new filename** and update the reference, or phones that
+loaded the old one keep it for a day. If the logo file is ever missing, every
+page falls back to a text wordmark, so nothing breaks.

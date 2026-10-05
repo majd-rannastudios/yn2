@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 # Poll until the custom domain serves HTTPS. Uses --resolve so a stale local
 # negative-cache entry cannot mask a domain that is actually up.
-HOST=networking.rannastudios.com
-TARGET=enkxfnja.up.railway.app
+# Usage: scripts/watch-domain.sh <custom domain> <railway CNAME target>
+#   e.g. scripts/watch-domain.sh event.yarnoo.com abc123.up.railway.app
+HOST=${1:?usage: watch-domain.sh <custom domain> <railway CNAME target>}
+TARGET=${2:?usage: watch-domain.sh <custom domain> <railway CNAME target>}
 START=$(date +%s)
 
 for i in $(seq 1 144); do

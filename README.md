@@ -1,18 +1,23 @@
-# Spin The Wheel — Colors
+# Spin The Wheel — Colors · Yarnoo
 
-A live networking activation. Guests scan a QR at the door, spin a colour wheel
-on their phone, and walk to the matching coloured circle on the floor. Every few
-minutes the colour changes and the room reshuffles.
+A live networking activation for **Yarnoo community events**. Guests sign in with
+their Yarnoo profile, spin a colour wheel on their phone, and walk to the
+matching coloured circle on the floor. Every few minutes the colour changes and
+the room reshuffles. When the night ends, everyone has a list of the people they
+met — linked to their Yarnoo profiles.
 
 The wheel is theatre. The server decides each guest's colour **before** the
 phone animates anything — that is the only way circles stay even and guests stop
 re-meeting the same people.
 
+Built by Ranna Studios for Yarnoo.
+
 ## Run it
 
 ```bash
 npm install
-ADMIN_PIN=1234 npm start
+ADMIN_PIN=1234 npm start                          # guests type their name
+YARNOO_DEV_SIGNIN=1 ADMIN_PIN=1234 npm start      # try Sign in with Yarnoo locally
 ```
 
 | Page | URL | Who |
@@ -22,6 +27,29 @@ ADMIN_PIN=1234 npm start
 | Projector view | `/screen` | the big screen in the hall |
 
 Copy `.env.example` to `.env` and set `ADMIN_PIN` before any real event.
+
+## Sign in with Yarnoo
+
+Guests are Yarnoo members, not anonymous names typed at the door. *Continue with
+Yarnoo* sends the phone to Yarnoo, which signs the member in, checks they are
+registered for the event, and sends them back with a short-lived signed token.
+The app verifies it and seats the guest **as that profile**:
+
+- **One profile, one seat.** Signing in again from another phone returns the
+  same seat and history.
+- **Photos and profile links** in every group list, and a *people you met* list
+  at the end — the reason to sign in at all.
+- **Members only, or members plus walk-ins** — `YARNOO_AUTH=required` (the default
+  once configured) or `optional`. With nothing configured the plain name form is
+  back, so local development needs no Yarnoo.
+- Profiles come from the token, from Yarnoo's API, or from a read-only query on
+  Yarnoo's Postgres — `YARNOO_PROFILE_SOURCE`.
+
+Yarnoo's side is one endpoint. The contract, signing examples in Node, PHP and
+Python, the deployment steps and the security model are in
+**[docs/YARNOO-INTEGRATION.md](docs/YARNOO-INTEGRATION.md)**.
+`npm run e2e:yarnoo` checks the whole handoff, including forged, expired,
+replayed and wrong-event tokens.
 
 ## How the matching works
 
@@ -42,68 +70,75 @@ then ruin-and-recreate, under a time budget. It optimises four things at once:
 **A repeat-free round is only possible when the group size is no larger than the
 number of groups.**
 
-Twenty-two people on one circle, drawn from only eight circles, forces repeat
-pairings by pigeonhole from round two — no matching algorithm can fix it. That
-is why a colour is split into **huddles**: the colour tells a guest where to
-walk, and their phone names the 5–6 people they are actually talking to.
+Sixty people on one circle, drawn from only five circles, forces repeat pairings
+by pigeonhole from round two — no matching algorithm can fix it. That is why a
+colour is split into **huddles**: the colour tells a guest where to walk, and
+their phone names the 5–6 people they are actually talking to.
 
-Six colours × eight huddles = forty-eight groups, which puts the room back under
-the limit. `planGroups()` picks the huddle count automatically and will never
-choose a shape that violates the rule. A 22-person circle was never a
+Five colours × ten huddles = fifty groups, which puts a 300-person room back
+under the limit. `planGroups()` picks the huddle count automatically and will
+never choose a shape that violates the rule. A 60-person circle was never a
 conversation anyway.
 
 This is also why the number of circles matters less than it looks: the planner
-answers fewer colours with more huddles per circle. Six circles or ten, same
+answers fewer colours with more huddles per circle. Five circles or ten, same
 result.
 
 ### Measured
 
-`npm run load` — 300 guests, 6 colours, 10 rounds:
+`npm run load` — 300 guests, 5 colours, 10 rounds:
 
 ```
-round  1: matched 1150ms | 300 phones in 142ms | repeats 0 | colleagues 0 | circle spread 0
+round  1: matched 1150ms | 300 phones in 147ms | repeats 0 | colleagues 0 | circle spread 0
 ...
-round 10: matched 1150ms | 300 phones in  60ms | repeats 0 | colleagues 0 | circle spread 0
+round 10: matched 1150ms | 300 phones in  57ms | repeats 0 | colleagues 0 | circle spread 0
 
-avg distinct people met: 52.8 | repeat pairs across the whole event: 0
+avg distinct people met: 50.0 | repeat pairs across the whole event: 0
 ```
 
 `npm run simulate` compares huddles against whole-circle matching on a synthetic
-room. `GUESTS=180 COLORS=6 ROUNDS=12 npm run simulate` to change the shape.
+room. `GUESTS=180 COLORS=5 ROUNDS=12 npm run simulate` to change the shape.
 
-## Colour: two layers, on purpose
+## Colour: one palette, Yarnoo's
 
-**The interface is Ranna.** **The circles are not.**
+The interface and the circles on the floor are both Yarnoo. The five circle
+colours are the Playbook's — **Magenta, Yellow, Lilac, Coral, Pink** — with the
+short names a guest can say out loud to a stranger. They live in
+`src/config.js` and reach the browser as inline styles; nothing in `style.css`
+defines one.
 
-Circle colours are wayfinding, not branding. A guest has to spot their circle
-across a dark room full of people and say its name out loud to a stranger, so
-they are plain primaries — Red, Blue, Yellow, Green, then Purple, Orange, Teal,
-Pink. Everybody already knows what blue means. They live in `src/config.js` and
-reach the browser as inline styles; nothing in `style.css` defines one.
+They are ordered by how far apart they read, so a room with fewer circles still
+gets the most separable set. The closest pair is **Pink and Lilac** (ΔE 26 —
+clearly different on screen, the pair to light well and keep apart on the
+floor). Because one circle colour is the page itself, every shape carrying a
+circle colour — wheel segments, the result card, avatars, meters, projector dots
+— has a white edge.
 
-They are ordered by how far apart they read, so a four-circle event gets
-red/blue/yellow/green — the four most separable colours there are.
+| Colour | Hex | Interface role | Text on it |
+|---|---|---|---|
+| Spotlight Magenta | `#A51374` | the stage: page ground, deeper shades for cards | white |
+| Encore Yellow | `#FDEE4D` | calls to action, eyebrows, timers, the wheel pointer | magenta |
+| Party Pink | `#FFB4FB` | accent words in headlines, the question rule | deep magenta |
+| Dreamy Lilac | `#AFA6FF` | gradient | deep magenta |
+| Lively Coral | `#FF656C` | warnings, disconnection, danger actions | deep magenta |
+| Clean White | `#FFFFFF` | text, input fields, rims around circle colours | — |
 
-Everything wrapped around them is brand and only brand.
+The magenta is `#A51374`, not the `#B30077` printed in the Playbook: that is its
+Pantone 214 C conversion, and every logo file and every page of the guide paints
+`#A51374` on screen, so the interface and the logo stay one colour.
 
-| Colour | Hex | Used for |
-|---|---|---|
-| Ember Dawn | `#FB9203` | primary accent, buttons, timers, the wheel pointer |
-| Burnt Horizon | `#E3500A` | warnings, disconnection, destructive actions |
-| Crimson Bloom | `#C91B7A` | progress gradient, page wash |
-| Veil of Becoming | `#68097D` | page wash |
-| Dusk Matter | `#3F184D` | card surfaces, the wheel hub ring |
-| Abyssal Black | `#080035` | page background, text on Ember |
+The Playbook gradient — yellow → pink → lilac → coral, "stage lights" — is kept
+for the loudest moment of the night: rotation, on every phone and on the wall.
 
-Type is **Prompt** for display (headings, clocks, numbers) and **Poppins** for
-anything that has to be read at length.
+Type is **Bricolage Grotesque 72pt Bold** for headlines and **Onest** for
+everything else (400 body, 600 calls to action, 800 subheads), self-hosted from
+the brand's own files in `public/brand/fonts/` so nothing depends on venue wifi
+reaching a font CDN.
 
-**Logo:** `public/brand/logo.png` — the white/reversed Ranna lockup, cropped to
-its artwork from the 4500² source (uncropped, the transparent padding shrinks it
-to a speck). Every page falls back to a text wordmark if the file goes missing.
-See `public/brand/README.md` to swap it.
+**Logo:** the white Yarnoo lockup at the Playbook's 55px digital minimum. Every
+asset is in `public/brand/` — see `public/brand/README.md`.
 
-**Website:** `rannastudios.com` sits quietly at the foot of all three pages.
+**Website:** `yarnoo.com` sits at the foot of all three pages.
 
 ## Sound and haptics
 
@@ -123,14 +158,16 @@ house speakers — which is louder and better than three hundred phone speakers,
 though both firing together is its own moment.
 
 Browsers refuse audio before a user gesture, so the context is unlocked on the
-join tap (guests) and the arm-screen tap (projector).
+guest's first tap — joining as a walk-in, or the first spin after Yarnoo sign-in
+— and on the arm-screen tap (projector).
 
 ## Operating it
 
 Start the event from `/admin` once the room has filled a little. The console
 shows live circle counts, a health readout per round (repeats, colleague
-pairings, how long matching took), and lets you rotate early, add or remove a
-minute, pause, and export a CSV of everyone who attended.
+pairings, how long matching took), which guests signed in with Yarnoo (with a
+link to each profile), and lets you rotate early, add or remove a minute, pause,
+and export a CSV of everyone who attended — including their Yarnoo ids.
 
 - **Late arrivals** are seated immediately into the emptiest, least-conflicting
   huddle — they never wait out a round.
@@ -140,68 +177,44 @@ minute, pause, and export a CSV of everyone who attended.
 - **A restart mid-event loses nothing.** State is snapshotted continuously; if a
   round expired while the server was down, it rotates on boot.
 
-## Railway
+## Deploying
 
-Project `spin-the-wheel-colors`, production environment, two services:
+One Node service and Postgres; on Railway, `railway.json` is already set up.
+The full checklist — variables, the Yarnoo settings, and the custom domain — is
+in [docs/YARNOO-INTEGRATION.md](docs/YARNOO-INTEGRATION.md#putting-it-on-a-yarnoo-domain).
+Three things worth knowing up front:
 
-| Service | What |
-|---|---|
-| `app` | this repo, served at `networking.rannastudios.com` |
-| `Postgres` | `postgres:16-alpine` on a persistent volume at `/var/lib/postgresql/data` |
+- **Set `PUBLIC_URL`** to the domain guests use. The QR code encodes it and the
+  Yarnoo `redirect_uri` is built from it.
+- **A custom domain needs two DNS records** on Railway: the `CNAME` routes
+  traffic and the `TXT _railway-verify.<subdomain>` proves ownership. With only
+  the CNAME the domain never verifies, no certificate is issued, and Railway's
+  edge answers every request with its own 404 — which looks like a routing bug
+  and is not one. Do not delete and re-add a stalled domain; Let's Encrypt
+  rate-limits duplicate certificates and a re-add can change the CNAME target.
+  `scripts/watch-domain.sh <domain> <cname target>` polls until HTTPS is live.
+- **Keep it to one replica.** The live event lives in memory and is snapshotted
+  to Postgres. Two replicas would each hold their own copy of the room and hand
+  out contradictory colours, so `numReplicas` is pinned to 1. Scaling this app
+  means moving round state into Postgres proper, not adding instances.
 
-Variables already set on `app`:
-
-- `DATABASE_URL` — points at Postgres over Railway's private network
-- `ADMIN_PIN` — the operator console PIN
-- `PUBLIC_URL` — the domain the QR code encodes (`https://networking.rannastudios.com`)
-- `NODE_ENV=production`
-
-`/health` reports which store won, so a deploy that quietly fell back to file
-storage is visible before an event rather than during one.
-
-### The custom domain needs TWO DNS records, not one
-
-Live at `networking.rannastudios.com`, on GoDaddy DNS:
-
-| Type | Name | Value |
-|---|---|---|
-| `CNAME` | `networking` | `enkxfnja.up.railway.app` |
-| `TXT` | `_railway-verify.networking` | `railway-verify=442ac327…` (from the Railway dashboard) |
-
-The CNAME routes traffic; the **TXT proves ownership**. With only the CNAME in
-place the domain never verifies, no certificate is issued, and Railway's edge
-answers every request with its own **404 "the train has not arrived at the
-station"** page — which looks like a routing bug and is not one.
-
-Worth knowing because the API hides it: `domain-status` lists only the CNAME in
-`dnsRecords` and reports it `PROPAGATED`, so everything reads as correct while
-the domain sits at `VALIDATING_OWNERSHIP` with a null error. The TXT token lives
-in `status.verificationToken`, which that endpoint does not return — the Railway
-dashboard is the only place to read it.
-
-If a certificate ever stalls again: **do not delete and re-add the domain.**
-Let's Encrypt rate-limits 5 duplicate certificates per domain per week, and a
-re-add can hand back a different CNAME target, meaning a new DNS record and a
-fresh propagation wait. `railway domain` in the CLI has a retry that re-triggers
-validation without any of that.
-
-### Keep it to one replica
-
-The live event lives in memory and is snapshotted to Postgres. Two replicas
-would each hold their own copy of the room and hand out contradictory colours,
-so `numReplicas` is pinned to 1 in `railway.json`. Scaling this app means
-moving round state into Postgres proper, not adding instances.
+`/health` reports which store won and the sign-in mode, so a deploy that quietly
+fell back to file storage — or came up without Yarnoo sign-in — is visible
+before an event rather than during one.
 
 ## Layout
 
 ```
-src/assign.js   the matching engine — no I/O, pure functions, the interesting part
-src/state.js    the live event: guests, rounds, meeting history, views
-src/store.js    snapshot persistence (Postgres or file)
-src/config.js   palette, icebreaker questions, cost weights
-src/server.js   HTTP + WebSocket
-public/         guest page, operator console, projector view
-scripts/        e2e, load test, offline simulation
+src/assign.js      the matching engine — no I/O, pure functions, the interesting part
+src/state.js       the live event: guests, rounds, meeting history, views
+src/yarnoo.js      Sign in with Yarnoo: token verification, profile sources
+src/devSignin.js   a stand-in Yarnoo sign-in page for local testing
+src/store.js       snapshot persistence (Postgres or file)
+src/config.js      palette, icebreaker questions, cost weights
+src/server.js      HTTP + WebSocket
+public/            guest page, operator console, projector view, brand assets
+docs/              the Yarnoo integration guide
+scripts/           e2e checks, load test, offline simulation, test tokens
 ```
 
 Tuning lives in `src/config.js` — `WEIGHTS` decides how hard the matcher fights

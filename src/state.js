@@ -43,6 +43,8 @@ export const event = {
 export const participants = new Map();
 /** token -> id */
 const tokens = new Map();
+/** Yarnoo member id -> guest id. One profile is one seat, however many phones sign in with it. */
+const byYarnoo = new Map();
 /** pairKey -> rounds shared */
 export const meetings = new Map();
 
@@ -54,7 +56,11 @@ export let round = null;
 const normaliseCompany = value =>
   (value || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim() || null;
 
-export function join({ name, company, role }) {
+/**
+ * Seat a guest. `yarnoo` is the member profile Yarnoo vouched for; without it
+ * this is a walk-in who typed their own name at the door.
+ */
+export function join({ name, company, role, yarnoo = null }) {
   const id = crypto.randomBytes(6).toString('hex');
   const token = crypto.randomBytes(24).toString('hex');
   const guest = {
@@ -64,6 +70,9 @@ export function join({ name, company, role }) {
     company: (company || '').trim().slice(0, 80),
     role: (role || '').trim().slice(0, 80),
     companyKey: normaliseCompany(company),
+    yarnooId: yarnoo?.id || null,
+    avatarUrl: yarnoo?.avatarUrl || '',
+    profileUrl: yarnoo?.profileUrl || '',
     joinedAt: Date.now(),
     lastSeen: Date.now(),
     metCount: 0,       // distinct people talked with so far
@@ -73,6 +82,7 @@ export function join({ name, company, role }) {
   };
   participants.set(id, guest);
   tokens.set(token, id);
+  if (guest.yarnooId) byYarnoo.set(guest.yarnooId, id);
 
   // Someone who arrives mid-round should not have to wait ten minutes to be
   // part of the night. Seat them straight away.
@@ -81,6 +91,31 @@ export function join({ name, company, role }) {
   persist();
   broadcast();
   return guest;
+}
+
+/**
+ * Seat a Yarnoo member, or hand back the seat they already have. Signing in
+ * again - a second phone, a cleared browser, a dead battery and a borrowed
+ * phone - must not create a second guest: the matcher would put the same
+ * person in two circles and count every meeting twice.
+ */
+export function joinYarnoo(profile) {
+  const existing = participants.get(byYarnoo.get(profile.id));
+  if (existing) {
+    // Keep their seat and history; take whatever Yarnoo now says about them.
+    existing.name = profile.name || existing.name;
+    existing.company = profile.company;
+    existing.role = profile.role;
+    existing.companyKey = normaliseCompany(profile.company);
+    existing.avatarUrl = profile.avatarUrl;
+    existing.profileUrl = profile.profileUrl;
+    existing.lastSeen = Date.now();
+    persist();
+    broadcast();
+    return existing;
+  }
+  if (event.status === 'ended') return null;
+  return join({ name: profile.name, company: profile.company, role: profile.role, yarnoo: profile });
 }
 
 export function bytoken(token) {
@@ -98,6 +133,7 @@ export function removeGuest(id) {
   const guest = participants.get(id);
   if (!guest) return false;
   tokens.delete(guest.token);
+  if (guest.yarnooId && byYarnoo.get(guest.yarnooId) === id) byYarnoo.delete(guest.yarnooId);
   participants.delete(id);
   if (round) round.groups.forEach(g => {
     const at = g.indexOf(id);
@@ -264,6 +300,7 @@ export function endEvent() {
 export function resetEvent() {
   participants.clear();
   tokens.clear();
+  byYarnoo.clear();
   meetings.clear();
   round = null;
   event.status = 'setup';
@@ -334,9 +371,15 @@ export function guestView(guest) {
       name: guest.name,
       company: guest.company,
       role: guest.role,
+      avatarUrl: guest.avatarUrl || '',
+      yarnoo: !!guest.yarnooId,
       rounds: guest.history.length
     }
   };
+
+  if (event.status === 'ended') {
+    return { ...base, assignment: null, metCount: metCountFor(guest.id), met: metList(guest.id) };
+  }
 
   if (event.status !== 'running' || !round || guest.color === null) {
     return { ...base, assignment: null, metCount: metCountFor(guest.id) };
@@ -347,7 +390,7 @@ export function guestView(guest) {
     .filter(id => id !== guest.id)
     .map(id => participants.get(id))
     .filter(Boolean)
-    .map(p => ({ name: p.name, company: p.company, role: p.role }));
+    .map(card);
 
   // Which huddle within the colour, counting from 1, for calling out loud.
   const siblings = round.groupColor
@@ -371,6 +414,33 @@ export function guestView(guest) {
 
 function metCountFor(id) {
   return participants.get(id)?.metCount ?? 0;
+}
+
+/** How one guest appears on another guest's phone. */
+const card = p => ({
+  name: p.name,
+  company: p.company,
+  role: p.role,
+  avatarUrl: p.avatarUrl || '',
+  profileUrl: p.profileUrl || ''
+});
+
+/**
+ * Everyone this guest shared a huddle with, for the wrap-up screen - the
+ * point of signing in with Yarnoo is being able to find these people again.
+ * Scans the pair log, so it is only built once the event has ended.
+ */
+function metList(id) {
+  const people = [];
+  for (const key of meetings.keys()) {
+    const sep = key.indexOf('|');
+    const a = key.slice(0, sep);
+    const b = key.slice(sep + 1);
+    const other = a === id ? b : b === id ? a : null;
+    const p = other && participants.get(other);
+    if (p) people.push(card(p));
+  }
+  return people.sort((x, y) => x.name.localeCompare(y.name));
 }
 
 /** Counts per colour, for the projector screen and the operator console. */
@@ -417,6 +487,8 @@ export function adminView() {
         name: g.name,
         company: g.company,
         role: g.role,
+        yarnooId: g.yarnooId || null,
+        profileUrl: g.profileUrl || '',
         color: g.color,
         rounds: g.history.length,
         active: g.lastSeen >= Date.now() - event.absentAfterMinutes * 60_000,
@@ -441,12 +513,14 @@ export function screenView() {
 
 /** Post-event export for the client. */
 export function exportCsv() {
-  const rows = [['name', 'company', 'role', 'joined_at', 'rounds_played', 'people_met', 'colours']];
+  const rows = [['name', 'company', 'role', 'yarnoo_id', 'yarnoo_profile', 'joined_at', 'rounds_played', 'people_met', 'colours']];
   for (const g of participants.values()) {
     rows.push([
       g.name,
       g.company,
       g.role,
+      g.yarnooId || '',
+      g.profileUrl || '',
       new Date(g.joinedAt).toISOString(),
       g.history.length,
       metCountFor(g.id),
@@ -491,10 +565,12 @@ export function hydrate(data) {
   round = data.round || null;
   participants.clear();
   tokens.clear();
+  byYarnoo.clear();
   meetings.clear();
   for (const g of data.participants || []) {
     participants.set(g.id, g);
     tokens.set(g.token, g.id);
+    if (g.yarnooId) byYarnoo.set(g.yarnooId, g.id);
   }
   for (const [key, count] of data.meetings || []) meetings.set(key, count);
 
