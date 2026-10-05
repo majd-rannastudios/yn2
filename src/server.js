@@ -1,4 +1,6 @@
+import 'dotenv/config';
 import crypto from 'node:crypto';
+import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import express from 'express';
@@ -10,6 +12,7 @@ import { mountDevSignin } from './devSignin.js';
 import * as store from './store.js';
 import * as state from './state.js';
 import * as yarnoo from './yarnoo.js';
+import * as supabase from './supabase.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3000;
@@ -29,13 +32,13 @@ const app = express();
 // https scheme for redirects.
 app.set('trust proxy', 1);
 app.use(express.json({ limit: '64kb' }));
-// Static files revalidate rather than sit in a browser cache for an hour.
-// `no-cache` does not mean "do not store" - the file is still cached, the
-// browser just asks "changed?" first and gets a 304 when it has not. That costs
-// a few bytes and buys the ability to push a fix mid-event and have every phone
-// in the room pick it up on the next load. Brand art never changes, so it keeps
-// a real cache lifetime.
-app.use(express.static(path.join(__dirname, '..', 'public'), {
+// Built client (Vite → dist/). Brand art under /brand/ keeps a real cache
+// lifetime; everything else revalidates so a mid-event fix reaches phones.
+const distDir = path.join(__dirname, '..', 'dist');
+if (!fs.existsSync(path.join(distDir, 'index.html'))) {
+  throw new Error('[server] dist/ is missing — run `npm run build` before start (or use `npm run dev`)');
+}
+app.use(express.static(distDir, {
   etag: true,
   setHeaders(res, filePath) {
     const longLived = /[\\/]brand[\\/]/.test(filePath);
@@ -46,6 +49,7 @@ app.use(express.static(path.join(__dirname, '..', 'public'), {
 // --- Yarnoo sign-in ----------------------------------------------------------
 
 yarnoo.assertConfigured();
+supabase.assertConfigured();
 if (yarnoo.config.mode !== 'off' && process.env.NODE_ENV === 'production' && !process.env.PUBLIC_URL) {
   console.warn('[yarnoo] PUBLIC_URL is not set - the redirect_uri sent to Yarnoo is guessed from request headers');
 }
@@ -72,7 +76,81 @@ const noStore = res => {
   res.setHeader('Referrer-Policy', 'no-referrer');
 };
 
-app.get('/api/config', (_req, res) => res.json(yarnoo.publicConfig()));
+app.get('/api/config', (_req, res) => res.json({
+  ...yarnoo.publicConfig(),
+  supabase: supabase.publicConfig(),
+  // Combined door: if either path is required, the guest form is members-first.
+  auth: (() => {
+    const y = yarnoo.config.mode;
+    const s = supabase.config.mode;
+    if (y === 'required' || s === 'required') return 'required';
+    if (y === 'optional' || s === 'optional') return 'optional';
+    return 'off';
+  })(),
+  doors: {
+    // OAuth handoff stays available for later; the guest UI uses contact lookup.
+    yarnooHandoff: yarnoo.config.mode !== 'off',
+    lookup: supabase.config.mode !== 'off',
+    walkin: yarnoo.config.mode !== 'required' && supabase.config.mode !== 'required'
+  }
+}));
+
+// --- Supabase contact enroll (server-side only; service role never reaches the browser) ---
+
+app.post('/api/enroll', async (req, res) => {
+  if (supabase.config.mode === 'off') {
+    return res.status(503).json({ error: 'Member lookup is not configured' });
+  }
+  if (state.event.status === 'ended') {
+    return res.status(409).json({ error: 'This event has finished' });
+  }
+  try {
+    const profile = await supabase.enrollByContact({
+      email: req.body?.email,
+      phone: req.body?.phone
+    });
+    const guest = state.joinYarnoo(profile);
+    if (!guest) return res.status(409).json({ error: 'This event has finished' });
+    if (profile.id) {
+      try {
+        const targets = await supabase.listFavoriteTargets(profile.id);
+        state.applyFavoriteTargets(guest, targets);
+      } catch (err) {
+        console.warn('[supabase] favorites load failed:', err.message);
+      }
+    }
+    res.json({ token: guest.token, view: state.guestView(guest) });
+  } catch (err) {
+    const status = err.code === 'not_registered' || err.code === 'not_checked_in' ? 403
+      : err.code === 'invalid' ? 400 : 400;
+    res.status(status).json({ error: err.message, code: err.code || 'enroll_failed' });
+  }
+});
+
+app.post('/api/favorite', async (req, res) => {
+  const guest = state.touch(req.body?.token);
+  if (!guest) return res.status(401).json({ error: 'Not signed in' });
+  if (!guest.yarnooId) {
+    return res.status(403).json({ error: 'Join with your Yarnoo RSVP to favorite people' });
+  }
+  if (supabase.config.mode === 'off') {
+    return res.status(503).json({ error: 'Favorites need Supabase' });
+  }
+  const target = state.getGuest(req.body?.targetId);
+  if (!target) return res.status(404).json({ error: 'Person not found in the room' });
+  if (target.id === guest.id) return res.status(400).json({ error: 'You cannot favorite yourself' });
+  try {
+    const result = await supabase.toggleFavorite(guest.yarnooId, {
+      favoritedUserId: target.yarnooId || null,
+      registrationId: target.registrationId || null
+    });
+    state.setFavoriteFlag(guest, target.id, result.favorited);
+    res.json({ ...result, view: state.guestView(guest) });
+  } catch (err) {
+    res.status(err.code === 'no_target' || err.code === 'self' ? 400 : 500)
+      .json({ error: err.message, code: err.code || 'favorite_failed' });
+  }
+});
 
 app.get('/auth/yarnoo/start', (req, res) => {
   noStore(res);
@@ -126,9 +204,9 @@ mountDevSignin(app, baseUrl);
 // --- guest API -------------------------------------------------------------
 
 app.post('/api/join', (req, res) => {
-  // Members only: the door is Yarnoo sign-in, not a form anyone can fill in.
-  if (yarnoo.config.mode === 'required') {
-    return res.status(403).json({ error: 'Sign in with Yarnoo to join this event.' });
+  // Members only: RSVP contact lookup, not a form anyone can fill in.
+  if (yarnoo.config.mode === 'required' || supabase.config.mode === 'required') {
+    return res.status(403).json({ error: 'Enter the email or phone from your Yarnoo RSVP to join this event.' });
   }
   const { name, company, role } = req.body || {};
   if (!name || !String(name).trim()) {
@@ -259,6 +337,7 @@ app.get('/health', (_req, res) => {
     ok: !degraded && !ephemeral,
     store: store.driverName(),
     signIn: yarnoo.config.mode,
+    supabase: supabase.config.mode,
     warning: degraded
       ? 'DATABASE_URL is set but Postgres is not connected - state will not survive a redeploy'
       : ephemeral
@@ -273,7 +352,7 @@ app.get('/health', (_req, res) => {
 
 // --- pages -----------------------------------------------------------------
 
-const page = file => (_req, res) => res.sendFile(path.join(__dirname, '..', 'public', file));
+const page = file => (_req, res) => res.sendFile(path.join(distDir, file));
 app.get('/', page('index.html'));
 app.get('/admin', page('admin.html'));
 app.get('/screen', page('screen.html'));
@@ -298,9 +377,30 @@ wss.on('connection', (socket, req) => {
   if (socket.role === 'guest') {
     const guest = state.touch(socket.token);
     if (guest && state.reseat(guest)) return;
+    // Members seated before artist-by-user_id photo lookup: fill in once.
+    if (guest?.yarnooId && !guest.avatarUrl && supabase.config.mode !== 'off') {
+      refreshMemberProfile(guest).catch(err => {
+        console.warn('[supabase] profile refresh failed:', err.message);
+      });
+    }
   }
   push(socket);
 });
+
+/** Pull Yarnoo photo / profile link for a seated member who still has none. */
+async function refreshMemberProfile(guest) {
+  const profile = await supabase.findUserProfile({ userId: guest.yarnooId });
+  if (!profile?.avatarUrl && !profile?.profileUrl && !profile?.role) return;
+  state.joinYarnoo({
+    id: profile.id,
+    name: profile.name || guest.name,
+    role: profile.role || guest.role,
+    company: profile.company || guest.company,
+    avatarUrl: profile.avatarUrl || guest.avatarUrl,
+    profileUrl: profile.profileUrl || guest.profileUrl,
+    registrationId: guest.registrationId
+  });
+}
 
 /** Send one socket whatever its role should be looking at. */
 function push(socket) {

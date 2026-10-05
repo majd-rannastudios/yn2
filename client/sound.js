@@ -9,7 +9,7 @@
  * context is created lazily and unlocked on the first real gesture.
  */
 
-window.Sound = (() => {
+export const Sound = (() => {
   let ctx = null;
   let master = null;
   let enabled = localStorage.getItem('stw-sound') !== 'off';

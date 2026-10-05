@@ -1,6 +1,6 @@
 # Brand assets
 
-The assets in `public/brand/` are Yarnoo's, taken from the Yarnoo Brand Playbook
+The assets in `client/public/brand/` are Yarnoo's, taken from the Yarnoo Brand Playbook
 and its source vector files.
 
 | File | What | Where it is used |
@@ -28,7 +28,7 @@ original magenta on light grounds; never magenta on magenta; never smaller than
 **55px tall** on screen; keep clear space of at least the mark's small triangle
 on every side.
 
-`/brand/` is served with a 24-hour cache, unlike the rest of `public/`. Replace
+`/brand/` is served with a 24-hour cache, unlike the rest of the Vite build. Replace
 an asset under a **new filename** and update the reference, or phones that
 loaded the old one keep it for a day. If the logo file is ever missing, every
 page falls back to a text wordmark, so nothing breaks.

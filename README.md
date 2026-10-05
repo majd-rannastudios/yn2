@@ -16,21 +16,44 @@ Built by Ranna Studios for Yarnoo.
 
 ```bash
 npm install
-ADMIN_PIN=1234 npm start                          # guests type their name
+npm run build                                     # React/Vite client → dist/
+ADMIN_PIN=1234 npm start                          # production: Express serves dist/ on :3000
 YARNOO_DEV_SIGNIN=1 ADMIN_PIN=1234 npm start      # try Sign in with Yarnoo locally
+
+ADMIN_PIN=1234 npm run dev                        # hot reload: Vite :5173 + Express :3000
 ```
 
-| Page | URL | Who |
-|---|---|---|
-| Guest | `/` | phones, via the QR |
-| Operator console | `/admin` | whoever is running the room |
-| Projector view | `/screen` | the big screen in the hall |
+### Supabase (Yarnoo accounts + favorites)
 
-`.env.example` lists every variable the app reads. Set them as environment
-variables — in Railway's Variables tab, your host's equivalent, or your shell
-(`ADMIN_PIN=... npm start`); the app does not load a `.env` file. `ADMIN_PIN`
-defaults to `1234` locally; in production the server refuses to start without a
-passphrase of 8+ characters.
+Keep WebSockets for the live room. Supabase is used **only on the Express server** for:
+
+1. **Sign up / sign in** with email+password (same Auth as yarnoo.com)
+2. **Gate** — only people in `event_registrations` for `SUPABASE_EVENT_NAME` (default `YN2`)
+3. **Walk-in guests** still available when `SUPABASE_AUTH=optional`
+4. **Favorites** — ♥ on people in your group / wrap-up, stored in Yarnoo’s `favorites` table
+
+Set on the host (Railway Variables), never in the client bundle:
+
+```bash
+SUPABASE_URL=https://xxxx.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=...   # service_role — server only
+SUPABASE_AUTH=optional          # or required
+SUPABASE_EVENT_NAME=YN2
+# SUPABASE_REQUIRE_CHECKIN=1    # optional: must be checked in at the door first
+```
+
+Open **http://localhost:5173** while developing (Vite proxies `/api`, `/auth`, `/ws` to Express). In production, open **http://localhost:3000** after `npm run build`.
+
+| Page | Dev | Prod | Who |
+|---|---|---|---|
+| Guest | http://localhost:5173/ | http://localhost:3000/ | phones, via the QR |
+| Operator console | http://localhost:5173/admin | http://localhost:3000/admin | whoever is running the room |
+| Projector view | http://localhost:5173/screen | http://localhost:3000/screen | the big screen in the hall |
+
+`.env.example` lists every variable the app reads. For local runs, copy secrets into
+a gitignored `.env` (the server loads it via `dotenv`). On Railway, set the same
+keys in Variables — do not commit `.env`. `ADMIN_PIN` defaults to `1234` locally;
+in production the server refuses to start without a passphrase of 8+ characters.
 
 ## Sign in with Yarnoo
 
@@ -141,11 +164,11 @@ for the loudest moment of the night: rotation, on every phone and on the wall.
 
 Type is **Bricolage Grotesque 72pt Bold** for headlines and **Onest** for
 everything else (400 body, 600 calls to action, 800 subheads), self-hosted from
-the brand's own files in `public/brand/fonts/` so nothing depends on venue wifi
+the brand's own files in `client/public/brand/fonts/` so nothing depends on venue wifi
 reaching a font CDN.
 
 **Logo:** the white Yarnoo lockup at the Playbook's 55px digital minimum. Every
-asset is in `public/brand/` — see [docs/BRAND.md](docs/BRAND.md).
+asset is in `client/public/brand/` — see [docs/BRAND.md](docs/BRAND.md).
 
 **Website:** `yarnoo.com` sits at the foot of all three pages.
 
@@ -225,8 +248,12 @@ src/yarnoo.js      Sign in with Yarnoo: token verification, profile sources
 src/devSignin.js   a stand-in Yarnoo sign-in page for local testing
 src/store.js       snapshot persistence (Postgres or file)
 src/config.js      palette, icebreaker questions, cost weights
-src/server.js      HTTP + WebSocket
-public/            guest page, operator console, projector view, brand assets
+src/server.js      HTTP + WebSocket (serves dist/ in production)
+client/            React + Vite multi-page app (guest / admin / screen)
+  pages/           GuestApp, AdminApp, ScreenApp
+  components/      shared UI pieces
+  public/brand/    Yarnoo assets
+dist/              Vite build output (gitignored; produced by npm run build)
 docs/              the Yarnoo integration guide, brand asset notes
 scripts/           e2e checks, load test, offline simulation, test tokens
 ```

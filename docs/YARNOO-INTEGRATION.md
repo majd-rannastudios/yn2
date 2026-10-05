@@ -360,6 +360,6 @@ Also, by design:
 | `src/server.js` | `/auth/yarnoo/start`, `/auth/yarnoo/callback`, `/api/config` |
 | `src/state.js` | `joinYarnoo()` — one profile, one seat |
 | `src/devSignin.js` | The local stand-in sign-in page |
-| `public/app.js` | The sign-in door, profile rows, the wrap-up list |
+| `client/pages/GuestApp.jsx` | The sign-in door, profile rows, the wrap-up list |
 | `scripts/yarnoo-token.js` | Mint a test token |
 | `scripts/e2e-yarnoo.js` | The end-to-end checks |

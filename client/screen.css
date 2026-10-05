@@ -1,0 +1,40 @@
+body { overflow: hidden; }
+body::before { top: -18vh; right: -12vw; width: 58vw; max-width: none; opacity: 0.08; }
+.stage { height: 100vh; display: grid; grid-template-rows: auto 1fr auto; padding: 4vh 5vw; gap: 3vh; }
+.top { display: flex; align-items: center; justify-content: space-between; }
+.top .brand-logo { height: 9vh; }
+.top .brand-logo .wordmark { font-size: 5vh; }
+.round { font-family: var(--font); font-size: 1.5vw; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; color: var(--yellow); }
+.middle { display: grid; grid-template-columns: 1.05fr 1fr; gap: 5vw; align-items: center; }
+.clock { font-family: var(--display); font-size: 17vw; font-weight: 700; line-height: 0.82; letter-spacing: -0.04em; font-variant-numeric: tabular-nums; }
+.clock.urgent { color: var(--yellow); }
+.clock-note { font-size: 1.6vw; color: var(--muted); margin-top: 2vh; font-weight: 500; }
+.circles { display: grid; gap: 1.2vh; background: var(--surface); border-radius: 2vw; padding: 2.4vh 2.2vw; }
+.c { display: flex; align-items: center; gap: 1.4vw; }
+.c .dot { width: 3.2vw; height: 3.2vw; border-radius: 50%; flex: none; box-shadow: 0 0 0 0.3vw var(--white); }
+.c .nm { font-family: var(--display); font-size: 2vw; font-weight: 700; flex: 1; }
+.c .n { font-family: var(--display); font-size: 2.2vw; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--yellow); }
+.bottom { display: flex; align-items: center; justify-content: space-between; gap: 3vw; }
+.bottom .right { display: flex; align-items: center; gap: 2.2vw; }
+.join { display: flex; align-items: center; gap: 1.6vw; }
+.join img.qr { width: 12vh; height: 12vh; border-radius: 1.2vh; background: #fff; padding: 0.7vh; }
+.join div { font-size: 1.35vw; color: var(--muted); max-width: 22ch; line-height: 1.4; }
+.count { font-size: 1.4vw; color: var(--muted); }
+.count b { font-family: var(--display); color: var(--text); font-size: 2.6vw; font-weight: 700; }
+.site-link { font-family: var(--font); font-size: 1.2vw; font-weight: 600; color: var(--white); text-decoration: none; border: 0.12vw solid rgba(255, 255, 255, 0.6); border-radius: 999px; padding: 0.5vw 1.3vw; }
+.move { position: fixed; inset: 0; background: var(--gradient); color: var(--magenta); display: none; place-items: center; text-align: center; z-index: 10; }
+.move.on { display: grid; animation: flash 0.5s ease both; }
+.move h1 { font-size: 13vw; letter-spacing: -0.03em; }
+.move p { font-size: 2.4vw; font-weight: 700; margin-top: 1vh; }
+@keyframes flash { from { opacity: 0; transform: scale(0.94); } to { opacity: 1; transform: none; } }
+.idle { text-align: center; }
+.idle-eyebrow { font-size: 1.5vw; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; color: var(--yellow); margin-bottom: 2vh; }
+.idle h1 { font-size: 7vw; }
+.idle h1 span { color: var(--pink); display: block; }
+.idle p { font-size: 1.8vw; color: var(--muted); margin-top: 2.5vh; }
+.arm {
+  position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; text-align: center;
+  background: rgba(90, 9, 63, 0.97); cursor: pointer; padding: 6vw;
+}
+.arm h2 { font-size: 4vw; color: var(--yellow); }
+.arm p { font-size: 1.6vw; color: var(--muted); margin-top: 2vh; max-width: 30ch; }

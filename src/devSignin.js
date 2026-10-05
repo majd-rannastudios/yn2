@@ -70,7 +70,7 @@ export function mountDevSignin(app, baseUrl) {
     <div class="eyebrow" style="margin-bottom:12px">Or a member of your own</div>
     <div class="field"><label for="d-name">Name</label><input id="d-name" name="name" required maxlength="60"></div>
     <div class="field"><label for="d-role">Role</label><input id="d-role" name="role" maxlength="80"></div>
-    <div class="field"><label for="d-company">Company</label><input id="d-company" name="company" maxlength="80"></div>
+    <div class="field"><label for="d-company">Company <span class="muted">(optional)</span></label><input id="d-company" name="company" maxlength="80"></div>
     <div class="field"><label for="d-sub">Yarnoo member id</label><input id="d-sub" name="sub" maxlength="120" placeholder="any id - the same id signs in to the same seat"></div>
     <button class="block" type="submit">Sign in</button>
   </form>
