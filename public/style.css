@@ -1,46 +1,67 @@
-/* Ranna Studios — Spin The Wheel: Colors
+/* Yarnoo — Spin The Wheel: Colors
  *
- * THE INTERFACE is Ranna, and only Ranna. Every value below is one of the six
- * brand colours, a tint of one over the background, or plain white. The tint
- * steps mirror the 20/40/60/80% ramps on the brand sheet.
+ * THE INTERFACE is Yarnoo, and only Yarnoo. Every value below is one of the
+ * Playbook colours, a deeper shade of Spotlight Magenta for surfaces, or white.
  *
- *   Ember Dawn        #FB9203     Veil of Becoming  #68097D
- *   Burnt Horizon     #E3500A     Dusk Matter       #3F184D
- *   Crimson Bloom     #C91B7A     Abyssal Black     #080035
+ *   Spotlight Magenta #A51374   Party Pink    #FFB4FB   Encore Yellow #FDEE4D
+ *   Clean White       #FFFFFF   Lively Coral  #FF656C   Dreamy Lilac  #AFA6FF
  *
- * THE CIRCLE COLOURS are not, deliberately. They live in src/config.js and are
- * plain primaries — red, blue, yellow, green - because they are wayfinding, not
- * branding: a guest has to spot their circle across a dark room and say its
- * name to a stranger. They arrive as inline styles from the server, so nothing
- * in this file should ever try to define one.
+ * The Playbook prints Spotlight Magenta as #B30077 (its Pantone 214 C value),
+ * but every logo file and every page of the guide paints #A51374 on screen, so
+ * that is the one used here - the interface and the logo stay the same magenta.
  *
- * Type: Prompt for display, Poppins for everything that has to be read.
+ * Contrast decides where each colour may go. On magenta: white 7.1:1 and
+ * Encore Yellow 6.0:1 carry text; Party Pink 4.5:1 only at display sizes;
+ * Lilac and Coral are decoration, never small text. On Yellow, Pink and white
+ * the ink is magenta - white text on them fails.
+ *
+ * THE CIRCLE COLOURS are not Yarnoo, deliberately. They live in src/config.js
+ * and are plain primaries because they are wayfinding: a guest has to spot their
+ * circle across a dark room and say its name to a stranger. They arrive as
+ * inline styles, so nothing here defines one - but several of them (Purple
+ * 1.2:1, Red 1.5:1, Blue 1.7:1) vanish against magenta, so every shape that
+ * carries one gets a white edge.
+ *
+ * Type: Bricolage Grotesque 72pt Bold for headlines, Onest for everything else
+ * (400 body, 600 calls to action, 800 subheads) - the Playbook hierarchy.
  */
 
-:root {
-  --ember: #FB9203;
-  --burnt: #E3500A;
-  --crimson: #C91B7A;
-  --veil: #68097D;
-  --dusk: #3F184D;
-  --abyss: #080035;
+@font-face { font-family: 'Bricolage Grotesque'; src: url('/brand/fonts/bricolage-grotesque-72pt-bold.woff2') format('woff2'); font-weight: 700; font-display: swap; }
+@font-face { font-family: 'Onest'; src: url('/brand/fonts/onest-400.woff2') format('woff2'); font-weight: 400; font-display: swap; }
+@font-face { font-family: 'Onest'; src: url('/brand/fonts/onest-500.woff2') format('woff2'); font-weight: 500; font-display: swap; }
+@font-face { font-family: 'Onest'; src: url('/brand/fonts/onest-600.woff2') format('woff2'); font-weight: 600; font-display: swap; }
+@font-face { font-family: 'Onest'; src: url('/brand/fonts/onest-700.woff2') format('woff2'); font-weight: 700; font-display: swap; }
+@font-face { font-family: 'Onest'; src: url('/brand/fonts/onest-800.woff2') format('woff2'); font-weight: 800; font-display: swap; }
 
-  /* Surfaces: Dusk Matter laid over Abyssal Black at brand tint steps. */
-  --bg: #080035;
-  --surface: #180B3D;
-  --surface-2: #241247;
-  --line: rgba(251, 146, 3, 0.16);
-  --line-soft: rgba(255, 255, 255, 0.10);
+:root {
+  --magenta: #A51374;
+  --white: #FFFFFF;
+  --pink: #FFB4FB;
+  --coral: #FF656C;
+  --yellow: #FDEE4D;
+  --lilac: #AFA6FF;
+
+  /* Surfaces: Spotlight Magenta, stepped darker so cards sit on the stage. */
+  --bg: #A51374;
+  --surface: #8A0F61;
+  --surface-2: #730C51;
+  --deep: #5A093F;
+  --line: rgba(255, 255, 255, 0.22);
+  --line-soft: rgba(255, 255, 255, 0.14);
 
   --text: #FFFFFF;
-  --muted: rgba(255, 255, 255, 0.62);
-  --faint: rgba(255, 255, 255, 0.38);
+  --muted: rgba(255, 255, 255, 0.82);
+  --faint: rgba(255, 255, 255, 0.72);
 
-  --radius: 18px;
-  --shadow: 0 18px 50px rgba(8, 0, 53, 0.6);
+  /* Stage lights: the Playbook gradient, top to bottom. */
+  --gradient: linear-gradient(180deg, #FDEE4D 0%, #FFB4FB 30%, #AFA6FF 70%, #FF656C 100%);
+  --gradient-x: linear-gradient(90deg, #FF656C 0%, #AFA6FF 34%, #FFB4FB 68%, #FDEE4D 100%);
 
-  --display: 'Prompt', 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --font: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --radius: 24px;
+  --shadow: 0 18px 44px rgba(64, 4, 44, 0.45);
+
+  --display: 'Bricolage Grotesque', 'Onest', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font: 'Onest', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Sans Arabic', Tahoma, sans-serif;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
@@ -59,14 +80,29 @@ html, body {
 body {
   display: flex;
   flex-direction: column;
-  /* A wash of Veil and Crimson so the black is never flat. */
-  background-image:
-    radial-gradient(90vw 60vh at 12% -8%, rgba(104, 9, 125, 0.55), transparent 62%),
-    radial-gradient(70vw 46vh at 96% 4%, rgba(201, 27, 122, 0.28), transparent 60%);
-  background-attachment: fixed;
+  position: relative;
+  overflow-x: hidden;
 }
 
-h1, h2, h3 { font-family: var(--display); font-weight: 700; letter-spacing: -0.015em; line-height: 1.1; }
+/* The Yarnoo Mark as a supergraphic: enlarged, cropped off the top-right
+   corner, faint enough to stay behind the content. */
+body::before {
+  content: '';
+  position: fixed;
+  top: -14vh;
+  right: -30vw;
+  width: 92vw;
+  aspect-ratio: 0.808;
+  max-width: 560px;
+  background: url('/brand/yarnoo-mark-white.svg') no-repeat center / contain;
+  opacity: 0.07;
+  transform: rotate(-8deg);
+  pointer-events: none;
+  z-index: 0;
+}
+body > * { position: relative; z-index: 1; }
+
+h1, h2, h3 { font-family: var(--display); font-weight: 700; letter-spacing: -0.02em; line-height: 1.02; }
 
 /* --- shared --------------------------------------------------------------- */
 
@@ -74,7 +110,7 @@ h1, h2, h3 { font-family: var(--display); font-weight: 700; letter-spacing: -0.0
   width: 100%;
   max-width: 520px;
   margin: 0 auto;
-  padding: 20px 20px calc(28px + env(safe-area-inset-bottom));
+  padding: 18px 20px calc(28px + env(safe-area-inset-bottom));
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -82,75 +118,78 @@ h1, h2, h3 { font-family: var(--display); font-weight: 700; letter-spacing: -0.0
 
 .topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 
-/* The lockup stacks "Ranna / Studios" beside the mark, so it needs a little
-   more height than a single-line wordmark to stay readable. Phone default;
-   the console and the projector scale it up for their viewing distance. */
-.brand-logo { display: flex; align-items: center; height: 32px; }
+/* The Playbook's digital minimum for the lockup is 55px tall. */
+.brand-logo { display: flex; align-items: center; height: 55px; }
 .brand-logo img { height: 100%; width: auto; display: block; }
-/* Until the real asset is dropped in, a wordmark stands in. */
+/* If the SVG ever goes missing, a wordmark stands in. */
 .brand-logo .wordmark {
   font-family: var(--display);
   font-weight: 700;
-  font-size: 15px;
-  letter-spacing: 0.02em;
-  color: var(--text);
+  font-size: 30px;
+  letter-spacing: -0.02em;
+  color: var(--white);
 }
-.brand-logo .wordmark b { color: var(--ember); font-weight: 700; }
 
 .eyebrow {
-  font-family: var(--display);
-  font-size: 12px;
-  letter-spacing: 0.18em;
+  font-family: var(--font);
+  font-size: 12.5px;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: var(--ember);
-  font-weight: 600;
+  color: var(--yellow);
+  font-weight: 800;
 }
 
 .muted { color: var(--muted); }
 .center { text-align: center; }
 
+/* Playbook buttons: pills. Encore Yellow with magenta ink is the call to action. */
 button {
   font-family: var(--font);
   font-size: 16px;
   font-weight: 600;
   border: 0;
   border-radius: 999px;
-  padding: 16px 26px;
-  background: var(--ember);
-  color: var(--abyss);
+  padding: 16px 28px;
+  background: var(--yellow);
+  color: var(--magenta);
   cursor: pointer;
-  transition: transform 0.12s ease, filter 0.12s ease;
+  transition: transform 0.12s ease, filter 0.12s ease, background-color 0.15s ease;
 }
 button:active { transform: scale(0.97); }
-button:disabled { opacity: 0.45; cursor: not-allowed; }
+button:disabled { opacity: 0.55; cursor: not-allowed; }
+button:focus-visible { outline: 3px solid var(--white); outline-offset: 3px; }
 button.ghost {
   background: transparent;
-  color: var(--text);
-  border: 1px solid var(--line);
+  color: var(--white);
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  padding: 14px 26px;
 }
+button.ghost.danger { border-color: var(--coral); }
 button.block { width: 100%; }
 
+/* Clean White fields with magenta ink: the crispest thing on a magenta page. */
 input, select {
   width: 100%;
   font-family: var(--font);
   font-size: 16px; /* 16px stops iOS zooming on focus */
-  color: var(--text);
-  background: var(--surface);
-  border: 1px solid var(--line-soft);
-  border-radius: 14px;
-  padding: 15px 16px;
+  color: var(--magenta);
+  background: var(--white);
+  border: 2px solid transparent;
+  border-radius: 16px;
+  padding: 14px 16px;
   outline: none;
-  transition: border-color 0.15s ease;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
-input::placeholder { color: var(--faint); }
-input:focus, select:focus { border-color: var(--ember); }
+input::placeholder { color: rgba(165, 19, 116, 0.55); }
+input:focus, select:focus { border-color: var(--yellow); box-shadow: 0 0 0 3px rgba(253, 238, 77, 0.45); }
 label {
   display: block;
-  font-size: 13px;
+  font-size: 13.5px;
   font-weight: 600;
-  color: var(--muted);
-  margin: 0 0 7px 2px;
+  color: var(--white);
+  margin: 0 0 7px 4px;
 }
+label .muted { font-weight: 400; }
 .field { margin-bottom: 15px; }
 
 .card {
@@ -164,18 +203,18 @@ label {
 
 .sound-btn {
   background: transparent;
-  border: 1px solid var(--line);
+  border: 1.5px solid var(--line);
   color: var(--muted);
-  padding: 7px 13px;
-  font-size: 12px;
+  padding: 7px 14px;
+  font-size: 12.5px;
   font-weight: 600;
   border-radius: 999px;
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.02em;
 }
-.sound-btn.on { color: var(--ember); border-color: rgba(251, 146, 3, 0.5); }
+.sound-btn.on { color: var(--yellow); border-color: rgba(253, 238, 77, 0.7); }
 
 /* --- screens -------------------------------------------------------------- */
 
@@ -189,10 +228,11 @@ label {
 
 /* --- join ----------------------------------------------------------------- */
 
-.hero-title { font-size: 36px; margin: 24px 0 6px; }
-.hero-title span { color: var(--ember); display: block; }
-.hero-sub { color: var(--muted); margin-bottom: 24px; font-size: 15px; }
-.consent { font-size: 12px; color: var(--faint); margin-top: 14px; line-height: 1.5; }
+.hero-eyebrow { margin-top: 26px; }
+.hero-title { font-size: 46px; margin: 8px 0 10px; }
+.hero-title span { color: var(--pink); display: block; }
+.hero-sub { color: var(--muted); margin-bottom: 24px; font-size: 15.5px; }
+.consent { font-size: 12.5px; color: var(--faint); margin-top: 14px; line-height: 1.5; }
 
 /* --- wheel ---------------------------------------------------------------- */
 
@@ -202,18 +242,31 @@ label {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 26px;
+  gap: 30px;
   padding: 10px 0;
 }
 
-.wheel-holder { position: relative; width: min(78vw, 320px); aspect-ratio: 1; }
+.wheel-holder { position: relative; width: min(76vw, 310px); aspect-ratio: 1; }
+
+/* A ring of stage light around the wheel, then a white rim, so even the
+   Purple and Red segments stand clear of the magenta page. */
+.wheel-holder::before {
+  content: '';
+  position: absolute;
+  inset: -12px;
+  border-radius: 50%;
+  background: var(--gradient);
+  box-shadow: 0 16px 40px rgba(64, 4, 44, 0.5);
+}
 
 .wheel {
+  position: relative;
   width: 100%;
   height: 100%;
   border-radius: 50%;
+  border: 5px solid var(--white);
+  background: var(--white);
   transform: rotate(0deg);
-  filter: drop-shadow(0 14px 34px rgba(8, 0, 53, 0.75));
 }
 .wheel.spinning { transition: transform 4.6s cubic-bezier(0.13, 0.85, 0.16, 1); }
 
@@ -221,41 +274,39 @@ label {
   position: absolute;
   inset: 50% auto auto 50%;
   transform: translate(-50%, -50%);
-  width: 22%;
+  width: 24%;
   aspect-ratio: 1;
   border-radius: 50%;
-  background: var(--abyss);
-  border: 4px solid var(--dusk);
+  background: var(--white);
+  box-shadow: 0 0 0 4px var(--magenta), 0 6px 16px rgba(64, 4, 44, 0.4);
   display: grid;
   place-items: center;
-  font-family: var(--display);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.1em;
-  color: var(--ember);
 }
+.wheel-hub img { width: 52%; height: auto; display: block; }
 
 .pointer {
   position: absolute;
-  top: -12px;
+  top: -22px;
   left: 50%;
   transform: translateX(-50%);
   width: 0;
   height: 0;
-  border-left: 15px solid transparent;
-  border-right: 15px solid transparent;
-  border-top: 26px solid var(--ember);
-  filter: drop-shadow(0 3px 6px rgba(8, 0, 53, 0.7));
+  border-left: 16px solid transparent;
+  border-right: 16px solid transparent;
+  border-top: 28px solid var(--yellow);
+  filter: drop-shadow(0 0 0 var(--magenta)) drop-shadow(0 3px 5px rgba(64, 4, 44, 0.6));
   z-index: 2;
 }
 
-.tap-hint { font-size: 14px; color: var(--muted); }
+.tap-hint { font-size: 14.5px; color: var(--muted); }
 
 /* --- result --------------------------------------------------------------- */
 
 .result-color {
+  margin-top: 14px;
   border-radius: var(--radius);
-  padding: 26px 20px;
+  border: 5px solid var(--white);
+  padding: 24px 20px;
   text-align: center;
   box-shadow: var(--shadow);
   animation: pop 0.5s cubic-bezier(0.2, 1.2, 0.3, 1) both;
@@ -266,28 +317,30 @@ label {
   to { opacity: 1; transform: none; }
 }
 
-.result-label { font-size: 12px; letter-spacing: 0.18em; text-transform: uppercase; opacity: 0.75; font-weight: 600; font-family: var(--display); }
-.result-name { font-family: var(--display); font-size: 40px; font-weight: 700; letter-spacing: -0.02em; margin: 4px 0; line-height: 1.05; }
-.result-huddle { font-size: 15px; font-weight: 500; opacity: 0.85; }
+.result-label { font-size: 12.5px; letter-spacing: 0.16em; text-transform: uppercase; opacity: 0.85; font-weight: 800; }
+.result-name { font-family: var(--display); font-size: 48px; font-weight: 700; letter-spacing: -0.02em; margin: 4px 0; line-height: 1.02; }
+.result-huddle { font-size: 15px; font-weight: 600; opacity: 0.9; }
 
 .timer-row {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  margin: 18px 0 8px;
+  margin: 20px 0 8px;
 }
-.timer { font-family: var(--display); font-size: 32px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
-.timer.urgent { color: var(--ember); }
+.timer { font-family: var(--display); font-size: 36px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+.timer.urgent { color: var(--yellow); }
 
-.bar { height: 5px; border-radius: 3px; background: var(--surface-2); overflow: hidden; }
-.bar > i { display: block; height: 100%; background: linear-gradient(90deg, var(--crimson), var(--ember)); border-radius: 3px; transition: width 1s linear; }
+.bar { height: 8px; border-radius: 999px; background: var(--deep); overflow: hidden; }
+.bar > i { display: block; height: 100%; background: var(--gradient-x); border-radius: 999px; transition: width 1s linear; }
 
 .question {
   margin-top: 16px;
-  border-left: 3px solid var(--ember);
-  padding: 4px 0 4px 14px;
+  background: var(--surface);
+  border-radius: 18px;
+  border-left: 5px solid var(--pink);
+  padding: 13px 16px;
   font-size: 17px;
-  font-weight: 400;
+  font-weight: 500;
   line-height: 1.4;
 }
 
@@ -298,37 +351,39 @@ label {
   gap: 12px;
   background: var(--surface);
   border: 1px solid var(--line-soft);
-  border-radius: 13px;
+  border-radius: 18px;
   padding: 11px 13px;
 }
 .avatar {
-  width: 34px;
-  height: 34px;
+  width: 38px;
+  height: 38px;
   flex: none;
   border-radius: 50%;
+  border: 2.5px solid var(--white);
   display: grid;
   place-items: center;
-  font-family: var(--display);
-  font-weight: 600;
+  font-family: var(--font);
+  font-weight: 800;
   font-size: 13px;
 }
-.person-name { font-weight: 600; font-size: 15px; }
-.person-meta { font-size: 12.5px; color: var(--muted); }
+.person-name { font-weight: 600; font-size: 15.5px; }
+.person-meta { font-size: 13px; color: var(--muted); }
 
 .stat-strip { display: flex; gap: 10px; margin-top: 16px; }
 .stat {
   flex: 1;
   background: var(--surface);
   border: 1px solid var(--line-soft);
-  border-radius: 13px;
+  border-radius: 18px;
   padding: 12px;
   text-align: center;
 }
-.stat b { display: block; font-family: var(--display); font-size: 24px; font-weight: 700; color: var(--ember); }
-.stat span { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+.stat b { display: block; font-family: var(--display); font-size: 30px; font-weight: 700; color: var(--yellow); line-height: 1.1; }
+.stat span { font-size: 11.5px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; font-weight: 600; }
 
 /* --- move overlay --------------------------------------------------------- */
 
+/* Rotation is the loudest moment of the night, so it gets the stage lights. */
 .overlay {
   position: fixed;
   inset: 0;
@@ -337,25 +392,25 @@ label {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 12px;
-  background: rgba(8, 0, 53, 0.95);
-  backdrop-filter: blur(8px);
+  gap: 14px;
+  background: var(--gradient);
+  color: var(--magenta);
   text-align: center;
   padding: 30px;
 }
 .overlay.on { display: flex; animation: rise 0.3s ease both; }
-.overlay h2 { font-size: 42px; color: var(--ember); }
-.overlay p { color: var(--muted); max-width: 22ch; }
+.overlay h2 { font-size: 54px; color: var(--magenta); }
+.overlay p { color: var(--magenta); font-weight: 600; max-width: 22ch; }
+.overlay button { background: var(--magenta); color: var(--white); margin-top: 6px; }
 
 .pulse { animation: pulse 1.1s ease-in-out infinite; }
 @keyframes pulse { 50% { transform: scale(1.05); } }
 
 /* --- misc ----------------------------------------------------------------- */
 
-.notice { margin-top: auto; font-size: 13px; color: var(--faint); text-align: center; padding-top: 18px; }
+.notice { margin-top: auto; font-size: 13.5px; color: var(--faint); text-align: center; padding-top: 18px; }
 
-/* Centred under every screen. Ember, but held back to about two thirds so it
-   reads as a signature at the foot of the page rather than a call to action. */
+/* yarnoo.com at the foot of every page, as the Playbook sets it: an outlined pill. */
 .site-foot {
   padding: 26px 0 2px;
   text-align: center;
@@ -363,31 +418,37 @@ label {
 .site-foot a {
   display: inline-block;
   font-family: var(--font);
-  font-size: 12.5px;
-  font-weight: 400;
-  color: var(--ember);
-  opacity: 0.7;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--white);
+  border: 1.5px solid rgba(255, 255, 255, 0.6);
+  border-radius: 999px;
+  padding: 6px 16px;
   text-decoration: none;
-  transition: opacity 0.18s ease;
+  transition: border-color 0.18s ease, background-color 0.18s ease;
 }
 .site-foot a:hover,
-.site-foot a:active { opacity: 1; }
+.site-foot a:active { border-color: var(--white); background: rgba(255, 255, 255, 0.1); }
 
 .offline {
   position: fixed;
   left: 50%;
   bottom: calc(14px + env(safe-area-inset-bottom));
   transform: translateX(-50%);
-  background: var(--burnt);
-  color: #FFFFFF;
-  font-size: 12.5px;
-  font-weight: 500;
-  padding: 8px 14px;
+  background: var(--white);
+  color: var(--magenta);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 9px 16px 9px 14px;
   border-radius: 999px;
+  box-shadow: var(--shadow);
   display: none;
+  align-items: center;
+  gap: 8px;
   z-index: 50;
 }
-.offline.on { display: block; }
+.offline::before { content: ''; width: 9px; height: 9px; border-radius: 50%; background: var(--coral); }
+.offline.on { display: inline-flex; }
 
 @media (prefers-reduced-motion: reduce) {
   .wheel.spinning { transition-duration: 0.6s; }

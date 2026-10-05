@@ -60,7 +60,7 @@ app.get('/api/screen', (_req, res) => res.json(state.screenView()));
 app.get('/api/qr', async (req, res) => {
   const base = process.env.PUBLIC_URL || `${req.protocol}://${req.get('host')}`;
   const url = base.replace(/\/$/, '');
-  res.json({ url, dataUrl: await QRCode.toDataURL(url, { width: 720, margin: 1 }) });
+  res.json({ url, dataUrl: await QRCode.toDataURL(url, { width: 720, margin: 1, color: { dark: '#A51374', light: '#FFFFFF' } }) });
 });
 
 // --- operator console ------------------------------------------------------
@@ -120,7 +120,7 @@ app.get('/api/admin/export.csv', requireAdmin, (_req, res) => {
 app.get('/api/admin/qr', requireAdmin, async (req, res) => {
   const base = process.env.PUBLIC_URL || `${req.protocol}://${req.get('host')}`;
   const url = base.replace(/\/$/, '');
-  res.json({ url, dataUrl: await QRCode.toDataURL(url, { width: 720, margin: 1 }) });
+  res.json({ url, dataUrl: await QRCode.toDataURL(url, { width: 720, margin: 1, color: { dark: '#A51374', light: '#FFFFFF' } }) });
 });
 
 app.get('/api/palette', (_req, res) => res.json(PALETTE));

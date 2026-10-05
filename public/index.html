@@ -3,11 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
-<meta name="theme-color" content="#080035">
-<title>Spin The Wheel — Colors</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Prompt:wght@400;500;600;700&display=swap" rel="stylesheet">
+<meta name="theme-color" content="#A51374">
+<title>Spin The Wheel — Colors · Yarnoo</title>
+<link rel="icon" href="/brand/yarnoo-icon.svg" type="image/svg+xml">
+<link rel="icon" href="/brand/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="/brand/apple-touch-icon.png">
+<link rel="preload" href="/brand/fonts/bricolage-grotesque-72pt-bold.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/brand/fonts/onest-400.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/style.css">
 </head>
 <body>
@@ -17,14 +19,14 @@
   <!-- persistent chrome: logo and sound live above the screens, not inside them -->
   <div class="topbar">
     <div class="brand-logo">
-      <img src="/brand/logo.png" alt="Ranna Studios"
-           onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'wordmark',innerHTML:'ranna<b>studios</b>'}))">
+      <img src="/brand/yarnoo-logo-white.svg" alt="Yarnoo" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'wordmark',textContent:'yarnoo'}))">
     </div>
     <button class="sound-btn" id="sound-btn" type="button">♪ Sound on</button>
   </div>
 
   <!-- 1. join -->
   <section class="screen on" id="screen-join">
+    <div class="eyebrow hero-eyebrow">Yarnoo Community</div>
     <h1 class="hero-title">Spin The Wheel<span>Colors</span></h1>
     <p class="hero-sub">Spin for a colour, walk to that circle, and meet the people waiting there. New colour every few minutes.</p>
 
@@ -35,11 +37,11 @@
       </div>
       <div class="field">
         <label for="f-company">Company</label>
-        <input id="f-company" name="company" autocomplete="organization" maxlength="80" placeholder="e.g. Ranna Studios">
+        <input id="f-company" name="company" autocomplete="organization" maxlength="80" placeholder="e.g. Yarnoo">
       </div>
       <div class="field">
         <label for="f-role">Role <span class="muted">(optional)</span></label>
-        <input id="f-role" name="role" autocomplete="organization-title" maxlength="80" placeholder="e.g. Creative Director">
+        <input id="f-role" name="role" autocomplete="organization-title" maxlength="80" placeholder="e.g. Singer, DJ, Event planner">
       </div>
       <button class="block" type="submit" id="join-btn">Join the room</button>
       <p class="consent">We use your company only to seat you away from your own colleagues, and to show your name to the small group you are matched with. Nothing is shared beyond this event.</p>
@@ -53,7 +55,7 @@
       <div class="wheel-holder">
         <div class="pointer"></div>
         <svg class="wheel" id="wheel" viewBox="0 0 200 200" aria-hidden="true"></svg>
-        <div class="wheel-hub">SPIN</div>
+        <div class="wheel-hub"><img src="/brand/yarnoo-mark-magenta.svg" alt=""></div>
       </div>
       <button id="spin-btn" class="pulse">Tap to spin</button>
       <p class="tap-hint" id="wheel-hint">Your colour is waiting.</p>
@@ -105,7 +107,7 @@
   </section>
 
   <footer class="site-foot">
-    <a href="https://rannastudios.com" target="_blank" rel="noopener">rannastudios.com</a>
+    <a href="https://yarnoo.com" target="_blank" rel="noopener">yarnoo.com</a>
   </footer>
 
 </div>

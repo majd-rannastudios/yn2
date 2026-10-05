@@ -3,52 +3,59 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="theme-color" content="#080035">
-<title>Spin The Wheel — room screen</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Prompt:wght@400;500;600;700&display=swap" rel="stylesheet">
+<meta name="theme-color" content="#A51374">
+<title>Spin The Wheel — room screen · Yarnoo</title>
+<link rel="icon" href="/brand/yarnoo-icon.svg" type="image/svg+xml">
+<link rel="icon" href="/brand/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="/brand/apple-touch-icon.png">
+<link rel="preload" href="/brand/fonts/bricolage-grotesque-72pt-bold.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/brand/fonts/onest-400.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/style.css">
 <style>
   body { overflow: hidden; }
+  /* On the wall the supergraphic can be big: the mark cropped off the right edge. */
+  body::before { top: -18vh; right: -12vw; width: 58vw; max-width: none; opacity: 0.08; }
   .stage { height: 100vh; display: grid; grid-template-rows: auto 1fr auto; padding: 4vh 5vw; gap: 3vh; }
   .top { display: flex; align-items: center; justify-content: space-between; }
   .top .brand-logo { height: 9vh; }
-  .top .brand-logo .wordmark { font-size: 1.3vw; }
-  .round { font-family: var(--display); font-size: 1.6vw; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ember); }
+  .top .brand-logo .wordmark { font-size: 5vh; }
+  .round { font-family: var(--font); font-size: 1.5vw; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; color: var(--yellow); }
   .middle { display: grid; grid-template-columns: 1.05fr 1fr; gap: 5vw; align-items: center; }
   .clock { font-family: var(--display); font-size: 17vw; font-weight: 700; line-height: 0.82; letter-spacing: -0.04em; font-variant-numeric: tabular-nums; }
-  .clock.urgent { color: var(--ember); }
-  .clock-note { font-size: 1.5vw; color: var(--muted); margin-top: 1.5vh; }
-  .circles { display: grid; gap: 1.4vh; }
+  .clock.urgent { color: var(--yellow); }
+  .clock-note { font-size: 1.6vw; color: var(--muted); margin-top: 2vh; font-weight: 500; }
+  /* The circle list sits on a deeper panel so the dots read against something calm. */
+  .circles { display: grid; gap: 1.2vh; background: var(--surface); border-radius: 2vw; padding: 2.4vh 2.2vw; }
   .c { display: flex; align-items: center; gap: 1.4vw; }
-  .c .dot { width: 3.4vw; height: 3.4vw; border-radius: 50%; flex: none; }
-  .c .nm { font-family: var(--display); font-size: 1.9vw; font-weight: 600; flex: 1; }
-  .c .n { font-family: var(--display); font-size: 2.1vw; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--muted); }
+  .c .dot { width: 3.2vw; height: 3.2vw; border-radius: 50%; flex: none; box-shadow: 0 0 0 0.3vw var(--white); }
+  .c .nm { font-family: var(--display); font-size: 2vw; font-weight: 700; flex: 1; }
+  .c .n { font-family: var(--display); font-size: 2.2vw; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--yellow); }
   .bottom { display: flex; align-items: center; justify-content: space-between; gap: 3vw; }
   .bottom .right { display: flex; align-items: center; gap: 2.2vw; }
   .join { display: flex; align-items: center; gap: 1.6vw; }
-  .join img.qr { width: 11vh; height: 11vh; border-radius: 1vh; background: #fff; padding: 0.6vh; }
-  .join div { font-size: 1.3vw; color: var(--muted); max-width: 22ch; line-height: 1.4; }
+  .join img.qr { width: 12vh; height: 12vh; border-radius: 1.2vh; background: #fff; padding: 0.7vh; }
+  .join div { font-size: 1.35vw; color: var(--muted); max-width: 22ch; line-height: 1.4; }
   .count { font-size: 1.4vw; color: var(--muted); }
-  .count b { font-family: var(--display); color: var(--text); font-size: 2.4vw; font-weight: 700; }
-  .site-link { font-family: var(--font); font-size: 1.3vw; color: var(--ember); opacity: 0.7; text-decoration: none; }
-  .move { position: fixed; inset: 0; background: var(--ember); color: var(--abyss); display: none; place-items: center; text-align: center; z-index: 10; }
+  .count b { font-family: var(--display); color: var(--text); font-size: 2.6vw; font-weight: 700; }
+  .site-link { font-family: var(--font); font-size: 1.2vw; font-weight: 600; color: var(--white); text-decoration: none; border: 0.12vw solid rgba(255, 255, 255, 0.6); border-radius: 999px; padding: 0.5vw 1.3vw; }
+  /* MOVE: the whole wall becomes the stage-light gradient from the Playbook. */
+  .move { position: fixed; inset: 0; background: var(--gradient); color: var(--magenta); display: none; place-items: center; text-align: center; z-index: 10; }
   .move.on { display: grid; animation: flash 0.5s ease both; }
-  .move h1 { font-size: 11vw; letter-spacing: -0.03em; }
-  .move p { font-size: 2.4vw; font-weight: 600; margin-top: 1vh; }
+  .move h1 { font-size: 13vw; letter-spacing: -0.03em; }
+  .move p { font-size: 2.4vw; font-weight: 700; margin-top: 1vh; }
   @keyframes flash { from { opacity: 0; transform: scale(0.94); } to { opacity: 1; transform: none; } }
   .idle { text-align: center; }
-  .idle h1 { font-size: 6vw; }
-  .idle h1 span { color: var(--ember); display: block; }
-  .idle p { font-size: 1.8vw; color: var(--muted); margin-top: 2vh; }
-  /* One click arms the room chime — browsers will not make noise before that. */
+  .idle-eyebrow { font-size: 1.5vw; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; color: var(--yellow); margin-bottom: 2vh; }
+  .idle h1 { font-size: 7vw; }
+  .idle h1 span { color: var(--pink); display: block; }
+  .idle p { font-size: 1.8vw; color: var(--muted); margin-top: 2.5vh; }
+  /* One click arms the room chime - browsers will not make noise before that. */
   .arm {
     position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; text-align: center;
-    background: rgba(8, 0, 53, 0.97); cursor: pointer; padding: 6vw;
+    background: rgba(90, 9, 63, 0.97); cursor: pointer; padding: 6vw;
   }
   .arm.off { display: none; }
-  .arm h2 { font-size: 4vw; color: var(--ember); }
+  .arm h2 { font-size: 4vw; color: var(--yellow); }
   .arm p { font-size: 1.6vw; color: var(--muted); margin-top: 2vh; max-width: 30ch; }
 </style>
 </head>
@@ -57,8 +64,7 @@
 <div class="stage" id="stage">
   <div class="top">
     <div class="brand-logo">
-      <img src="/brand/logo.png" alt="Ranna Studios"
-           onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'wordmark',innerHTML:'ranna<b>studios</b>'}))">
+      <img src="/brand/yarnoo-logo-white.svg" alt="Yarnoo" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'wordmark',textContent:'yarnoo'}))">
     </div>
     <div class="round" id="round">Spin The Wheel — Colors</div>
   </div>
@@ -73,6 +79,7 @@
 
   <div class="middle idle" id="idle" style="display:grid;grid-template-columns:1fr">
     <div>
+      <div class="idle-eyebrow">Yarnoo Community</div>
       <h1>Spin The Wheel<span>Colors</span></h1>
       <p id="idle-note">Scan the code, spin for a colour, and go meet the people on that circle.</p>
     </div>
@@ -85,7 +92,7 @@
     </div>
     <div class="right">
       <div class="count"><b id="guests">0</b> guests in the room</div>
-      <a class="site-link" href="https://rannastudios.com" target="_blank" rel="noopener">rannastudios.com</a>
+      <a class="site-link" href="https://yarnoo.com" target="_blank" rel="noopener">yarnoo.com</a>
     </div>
   </div>
 </div>

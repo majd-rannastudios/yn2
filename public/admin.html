@@ -3,47 +3,49 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="theme-color" content="#080035">
-<title>Operator console — Spin The Wheel</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Prompt:wght@400;500;600;700&display=swap" rel="stylesheet">
+<meta name="theme-color" content="#A51374">
+<title>Operator console — Spin The Wheel · Yarnoo</title>
+<link rel="icon" href="/brand/yarnoo-icon.svg" type="image/svg+xml">
+<link rel="icon" href="/brand/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="/brand/apple-touch-icon.png">
+<link rel="preload" href="/brand/fonts/bricolage-grotesque-72pt-bold.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/brand/fonts/onest-400.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/style.css">
 <style>
   .wrap { max-width: 1100px; }
   /* Read at a desk, not in a hand — the phone default is far too small here. */
-  .brand-logo { height: 46px; }
-  #screen-login .brand-logo { height: 54px; margin-bottom: 6px; }
+  .brand-logo { height: 55px; }
+  #screen-login .brand-logo { height: 64px; margin-bottom: 10px; }
   .grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
   .row { display: flex; gap: 10px; flex-wrap: wrap; }
   .row > button { flex: 1; min-width: 120px; padding: 14px 18px; font-size: 15px; }
-  h2 { font-size: 15px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--muted); margin-bottom: 12px; }
-  .big { font-family: var(--display); font-size: 42px; font-weight: 800; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+  h2 { font-family: var(--font); font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.14em; color: var(--yellow); margin-bottom: 12px; }
+  .big { font-family: var(--display); font-size: 42px; font-weight: 700; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
   .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; }
   .circles { display: grid; gap: 8px; }
   .circle-row { display: flex; align-items: center; gap: 12px; }
-  .swatch { width: 30px; height: 30px; border-radius: 50%; flex: none; }
+  .swatch { width: 28px; height: 28px; border-radius: 50%; flex: none; box-shadow: 0 0 0 2.5px var(--white); }
   .circle-row .nm { font-size: 13px; width: 118px; flex: none; color: var(--muted); }
-  .meter { flex: 1; height: 26px; background: var(--surface-2); border-radius: 7px; overflow: hidden; }
-  .meter > i { display: block; height: 100%; border-radius: 7px; transition: width 0.4s ease; }
+  .meter { flex: 1; height: 26px; background: var(--deep); border-radius: 999px; overflow: hidden; box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.85); }
+  .meter > i { display: block; height: 100%; border-radius: 999px; transition: width 0.4s ease; }
   .count { width: 76px; text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
   table { width: 100%; border-collapse: collapse; font-size: 14px; }
   th { text-align: left; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; padding: 8px 6px; border-bottom: 1px solid var(--line); }
   td { padding: 9px 6px; border-bottom: 1px solid var(--line); }
-  .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+  .dot { width: 11px; height: 11px; border-radius: 50%; display: inline-block; box-shadow: 0 0 0 1.5px var(--white); vertical-align: -1px; }
   .x { background: none; border: 0; color: var(--muted); cursor: pointer; padding: 4px 8px; font-size: 14px; }
-  .x:hover { color: var(--burnt); }
-  .qr { display: block; width: 100%; max-width: 260px; border-radius: 14px; margin: 0 auto; }
+  .x:hover { color: var(--yellow); }
+  .qr { display: block; width: 100%; max-width: 260px; border-radius: 18px; margin: 0 auto; background: #fff; padding: 8px; }
   .pill { display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; padding: 5px 11px; border-radius: 999px; }
-  .pill.running { background: rgba(251, 146, 3, 0.18); color: var(--ember); }
-  .pill.paused { background: rgba(227, 80, 10, 0.20); color: #F0913F; }
-  .pill.setup, .pill.ended { background: var(--surface-2); color: var(--muted); }
+  .pill.running { background: var(--yellow); color: var(--magenta); }
+  .pill.paused { background: var(--coral); color: var(--deep); }
+  .pill.setup, .pill.ended { background: transparent; color: var(--white); box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.7); }
   .hint { font-size: 12.5px; color: var(--muted); margin-top: 8px; line-height: 1.5; }
-  .health { font-size: 13px; padding: 11px 13px; border-radius: 11px; background: var(--surface-2); margin-top: 12px; line-height: 1.5; }
-  .health.warn { background: rgba(227, 80, 10, 0.18); color: #F5B183; }
-  .health.good { background: rgba(104, 9, 125, 0.35); color: #D9A8E4; }
+  .health { font-size: 13.5px; padding: 12px 14px; border-radius: 16px; background: var(--surface-2); margin-top: 12px; line-height: 1.5; }
+  .health.warn { background: var(--coral); color: var(--deep); font-weight: 500; }
+  .health.good { background: var(--pink); color: var(--deep); font-weight: 500; }
   .switch { display: flex; align-items: center; gap: 10px; cursor: pointer; margin: 4px 0 6px; font-size: 14px; font-weight: 500; }
-  .switch input { width: 18px; height: 18px; flex: none; accent-color: var(--ember); }
+  .switch input { width: 18px; height: 18px; flex: none; accent-color: var(--yellow); }
 </style>
 </head>
 <body>
@@ -51,7 +53,7 @@
 
   <!-- login -->
   <section class="screen on" id="screen-login" style="max-width:400px;margin:auto">
-    <div class="brand-logo"><img src="/brand/logo.png" alt="Ranna Studios" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'wordmark',innerHTML:'ranna<b>studios</b>'}))"></div>
+    <div class="brand-logo"><img src="/brand/yarnoo-logo-white.svg" alt="Yarnoo" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'wordmark',textContent:'yarnoo'}))"></div>
     <h1 class="hero-title">Operator<span>console</span></h1>
     <form id="login-form">
       <div class="field">
@@ -65,7 +67,7 @@
   <!-- console -->
   <section class="screen" id="screen-console">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:6px">
-      <div class="brand-logo"><img src="/brand/logo.png" alt="Ranna Studios" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'wordmark',innerHTML:'ranna<b>studios</b>'}))"></div>
+      <div class="brand-logo"><img src="/brand/yarnoo-logo-white.svg" alt="Yarnoo" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'wordmark',textContent:'yarnoo'}))"></div>
       <span class="pill setup" id="status-pill">setup</span>
     </div>
     <h1 style="font-size:26px;margin-bottom:18px">Spin The Wheel — Colors</h1>
@@ -141,7 +143,7 @@
           <button class="ghost" id="btn-end">End event</button>
         </div>
         <div class="row" style="margin-top:10px">
-          <button class="ghost" id="btn-reset" style="color:var(--burnt)">Reset everything</button>
+          <button class="ghost danger" id="btn-reset">Reset everything</button>
         </div>
         <div class="hint">Reset clears every guest and every match. Only use it between real events.</div>
       </div>
@@ -160,7 +162,7 @@
   </section>
 
   <footer class="site-foot">
-    <a href="https://rannastudios.com" target="_blank" rel="noopener">rannastudios.com</a>
+    <a href="https://yarnoo.com" target="_blank" rel="noopener">yarnoo.com</a>
   </footer>
 
 </div>

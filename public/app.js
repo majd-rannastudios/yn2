@@ -83,7 +83,7 @@
       const large = step > 180 ? 1 : 0;
       const x0 = 100 + 96 * Math.cos(a0), y0 = 100 + 96 * Math.sin(a0);
       const x1 = 100 + 96 * Math.cos(a1), y1 = 100 + 96 * Math.sin(a1);
-      return `<path d="M100,100 L${x0.toFixed(2)},${y0.toFixed(2)} A96,96 0 ${large},1 ${x1.toFixed(2)},${y1.toFixed(2)} Z" fill="${c.hex}" stroke="#0E0E10" stroke-width="1.5"/>`;
+      return `<path d="M100,100 L${x0.toFixed(2)},${y0.toFixed(2)} A96,96 0 ${large},1 ${x1.toFixed(2)},${y1.toFixed(2)} Z" fill="${c.hex}" stroke="#FFFFFF" stroke-width="2.5" stroke-linejoin="round"/>`;
     }).join('');
   }
 
