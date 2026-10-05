@@ -1,7 +1,7 @@
 # Brand assets
 
-Everything here is Yarnoo, taken from the Yarnoo Brand Playbook and its source
-files (`RS 2025/05_PROJECTS/INTERNAL/Yarnoo/Branding` on the shared drive).
+The assets in `public/brand/` are Yarnoo's, taken from the Yarnoo Brand Playbook
+and its source vector files.
 
 | File | What | Where it is used |
 |---|---|---|
@@ -12,7 +12,8 @@ files (`RS 2025/05_PROJECTS/INTERNAL/Yarnoo/Branding` on the shared drive).
 | `yarnoo-logo-arabic-*.svg` | Arabic lockup | spare |
 | `yarnoo-mark-white.svg` | the Yarnoo Mark alone, white | page supergraphic |
 | `yarnoo-mark-magenta.svg` | the Yarnoo Mark alone, magenta | wheel hub, sign-in button |
-| `yarnoo-icon.svg`, `favicon-32.png`, `apple-touch-icon.png`, `yarnoo-icon-192.png` | white mark on a magenta rounded square | browser tab, home screen |
+| `yarnoo-icon.svg`, `favicon-32.png`, `apple-touch-icon.png` | white mark on a magenta rounded square | browser tab, home screen |
+| `yarnoo-icon-192.png` | the same icon at 192px | spare - for a web manifest; none is wired |
 | `fonts/bricolage-grotesque-72pt-bold.woff2` | headline face | `style.css` |
 | `fonts/onest-{400,500,600,700,800}.woff2` | text face | `style.css` |
 

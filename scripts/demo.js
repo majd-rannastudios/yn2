@@ -35,6 +35,14 @@ const PEOPLE = [
 ];
 
 (async () => {
+  // These scripts reset the event and seat guests through the name form, so
+  // they need a local server with Yarnoo sign-in off (or YARNOO_AUTH=optional).
+  // Against a members-only server they would wipe the room and then fail.
+  const cfg = await j('/api/config');
+  if (cfg.body?.auth === 'required') {
+    console.error(`${BASE} is members-only (YARNOO_AUTH=required). Run this against a local server with Yarnoo sign-in off.`);
+    process.exit(1);
+  }
   const login = await j('/api/admin/login',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({pin:PIN})});
   if(!login.ok){ console.error('admin login failed'); process.exit(1); }
   const admin = login.body.token;
@@ -44,7 +52,8 @@ const PEOPLE = [
   await A('/api/admin/config',{ name:'Yarnoo Community Night', colorCount:5, roundMinutes:10, huddleSize:5 });
 
   for (const [name,company,role] of PEOPLE) {
-    await j('/api/join',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({name,company,role})});
+    const r = await j('/api/join',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({name,company,role})});
+    if (!r.ok) { console.error(`could not seat ${name}: ${r.body?.error || r.status}`); process.exit(1); }
   }
 
   // Play a few rounds so the history has substance, then land on a live one.

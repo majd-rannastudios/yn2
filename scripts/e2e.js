@@ -8,6 +8,14 @@ const NAMES = ['Sara','Omar','Lin','Karim','Maya','Youssef','Nadia','Tarek','Ran
 const COMPANIES = ['Yarnoo','Acme','Globex','Initech','Umbrella','Nova'];
 
 (async () => {
+  // These scripts reset the event and seat guests through the name form, so
+  // they need a local server with Yarnoo sign-in off (or YARNOO_AUTH=optional).
+  // Against a members-only server they would wipe the room and then fail.
+  const cfg = await j('/api/config');
+  if (cfg.body?.auth === 'required') {
+    console.error(`${BASE} is members-only (YARNOO_AUTH=required). Run this against a local server with Yarnoo sign-in off.`);
+    process.exit(1);
+  }
   let fails = 0;
   const check = (label, cond, detail='') => {
     console.log(`${cond ? 'PASS' : 'FAIL'}  ${label}${detail ? '  — ' + detail : ''}`);
@@ -31,7 +39,7 @@ const COMPANIES = ['Yarnoo','Acme','Globex','Initech','Umbrella','Nova'];
   for (let i = 0; i < 40; i++) {
     const r = await j('/api/join', { method:'POST', headers:{'content-type':'application/json'},
       body: JSON.stringify({ name: NAMES[i], company: COMPANIES[i % 6], role: 'Attendee' }) });
-    guests.push(r.body.token);
+    if (r.ok) guests.push(r.body.token);
   }
   check('40 guests joined', guests.length === 40);
   const noName = await j('/api/join', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ name:'  ' }) });

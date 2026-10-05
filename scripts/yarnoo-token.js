@@ -8,7 +8,10 @@
 //       --picture https://cdn.yarnoo.com/u/42.jpg --profile https://yarnoo.com/u/layla
 //
 // Reads YARNOO_JWT_SECRET, YARNOO_JWT_ISSUER, YARNOO_JWT_AUDIENCE and
-// YARNOO_EVENT_ID from the environment - the same values the server uses.
+// YARNOO_EVENT_ID from the environment - export the same values the deployment
+// uses (the issuer must match exactly), or pass --event. The URL works once,
+// within 5 minutes (--ttl), and the guest it seats is real: Reset everything in
+// the console before the event.
 // HS256 only: with a JWKS setup the private key lives with Yarnoo, not here.
 
 import crypto from 'node:crypto';

@@ -28,13 +28,13 @@ export function pairKey(a, b) {
  * A colour is WHERE you walk. A huddle is WHO you talk to once you get there.
  * The distinction is what makes the whole thing work, for one hard reason:
  * a round with no repeat pairings is only possible when the group size is no
- * bigger than the number of groups. Twenty-two people milling on one circle,
- * with only eight circles to draw from, forces repeats by pigeonhole from
- * round two onward - and twenty-two people is a crowd, not a conversation.
+ * bigger than the number of groups. Sixty people milling on one circle, with
+ * only five circles to draw from, forces repeats by pigeonhole from round two
+ * onward - and sixty people is a crowd, not a conversation.
  *
  * So we cut each colour into huddles of ~`targetHuddleSize`, name them on the
- * guest's phone, and the matching runs at huddle granularity. Eight colours of
- * four huddles is thirty-two groups, which puts us back under the limit.
+ * guest's phone, and the matching runs at huddle granularity. Five colours of
+ * ten huddles is fifty groups, which puts a 300-person room back under the limit.
  *
  * @returns {{ groupCount, groupColor, huddlesPerColor }} groupColor[g] is the
  *          colour index that group g belongs to.

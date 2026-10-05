@@ -30,9 +30,10 @@
     <h1 class="hero-title">Spin The Wheel<span>Colors</span></h1>
     <p class="hero-sub">Spin for a colour, walk to that circle, and meet the people waiting there. New colour every few minutes.</p>
 
+    <p class="auth-error" id="auth-error" role="alert" hidden></p>
+
     <!-- The door for Yarnoo members. Which doors are open comes from /api/config. -->
     <div class="signin" id="signin" hidden>
-      <p class="auth-error" id="auth-error" role="alert" hidden></p>
       <a class="btn-yarnoo" id="yarnoo-btn" href="/auth/yarnoo/start">
         <img src="/brand/yarnoo-mark-magenta.svg" alt="">Continue with Yarnoo
       </a>
@@ -76,7 +77,7 @@
   <section class="screen" id="screen-result">
     <div class="result-color" id="result-color">
       <div class="result-label">Go to the</div>
-      <div class="result-name" id="result-name">Blue</div>
+      <div class="result-name" id="result-name"></div>
       <div class="result-huddle" id="result-huddle">circle</div>
     </div>
 

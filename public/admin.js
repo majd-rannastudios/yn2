@@ -20,7 +20,7 @@
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ pin: $('pin').value })
     });
-    if (!res.ok) { alert('Wrong PIN'); return; }
+    if (!res.ok) { alert((await res.json().catch(() => ({}))).error || 'Wrong PIN'); return; }
     admin = (await res.json()).token;
     sessionStorage.setItem('stw-admin', admin);
     open();
@@ -85,7 +85,8 @@
     await api('/api/admin/config', {
       method: 'POST',
       body: JSON.stringify({
-        colorCount: Number($('cfg-colors').value),
+        // Nothing selected (an old snapshot's count with no matching option) sends nothing.
+        colorCount: Number($('cfg-colors').value) || undefined,
         roundMinutes: Number($('cfg-minutes').value),
         huddleSize: Number($('cfg-huddle').value),
         showQuestions: $('cfg-questions').checked
@@ -158,7 +159,10 @@
     }
 
     // Setup fields — do not fight the operator while they are typing
-    if (document.activeElement?.id !== 'cfg-colors') $('cfg-colors').value = event.colorCount;
+    if (document.activeElement?.id !== 'cfg-colors') {
+      $('cfg-colors').value = Math.min(event.colorCount, palette.length);
+      if ($('cfg-colors').selectedIndex === -1) $('cfg-colors').selectedIndex = $('cfg-colors').options.length - 1;
+    }
     if (document.activeElement?.id !== 'cfg-minutes') $('cfg-minutes').value = event.roundMinutes;
     if (document.activeElement?.id !== 'cfg-huddle') $('cfg-huddle').value = event.huddleSize;
     if (document.activeElement?.id !== 'cfg-questions') $('cfg-questions').checked = !!event.showQuestions;

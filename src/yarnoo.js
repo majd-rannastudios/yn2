@@ -45,7 +45,7 @@ const devSignin = env.YARNOO_DEV_SIGNIN === '1' && !production;
 // HS256 needs a secret Yarnoo and this app share.
 const secretText = env.YARNOO_JWT_SECRET || (devSignin ? crypto.randomBytes(32).toString('hex') : '');
 const secret = secretText ? new TextEncoder().encode(secretText) : null;
-// RS256 / ES256 / EdDSA: Yarnoo publishes its public keys and keeps the private one.
+// RS256 / PS256 / ES256 / EdDSA: Yarnoo publishes its public keys and keeps the private one.
 const jwks = env.YARNOO_JWKS_URL ? createRemoteJWKSet(new URL(env.YARNOO_JWKS_URL)) : null;
 
 const signinUrl = env.YARNOO_SIGNIN_URL || (devSignin ? '/auth/yarnoo/dev' : '');
@@ -68,10 +68,14 @@ function resolveMode() {
     throw new Error(`[yarnoo] YARNOO_AUTH must be one of ${MODES.join(', ')} - got "${env.YARNOO_AUTH}"`);
   }
   if (asked) return asked;
-  // Configured for Yarnoo but not told otherwise: members only. The local
-  // dev sign-in keeps the guest form too, so both doors can be tried.
+  // The local dev sign-in keeps the guest form too, so both doors can be tried.
   if (devSignin) return 'optional';
-  return signinUrl && (secret || jwks) ? 'required' : 'off';
+  // Any sign of a Yarnoo setup means members only - and assertConfigured()
+  // then insists on the rest. A typo in one variable name must stop the
+  // deploy, not quietly open a members-only event to anyone with a name.
+  return env.YARNOO_SIGNIN_URL || env.YARNOO_JWT_SECRET || env.YARNOO_JWKS_URL || env.YARNOO_EVENT_ID
+    ? 'required'
+    : 'off';
 }
 
 /**
@@ -85,7 +89,10 @@ export function assertConfigured() {
     throw new Error('[yarnoo] YARNOO_DEV_SIGNIN=1 cannot run alongside a real Yarnoo configuration ' +
       '(YARNOO_SIGNIN_URL / YARNOO_JWT_SECRET / YARNOO_JWKS_URL) - unset YARNOO_DEV_SIGNIN, and set NODE_ENV=production on deployments');
   }
-  if (config.mode === 'off') return;
+  if (config.mode === 'off') {
+    console.log('[yarnoo] sign-in off - guests type their own name');
+    return;
+  }
   const missing = [];
   if (!config.signinUrl) missing.push('YARNOO_SIGNIN_URL');
   if (!secret && !jwks) missing.push('YARNOO_JWT_SECRET or YARNOO_JWKS_URL');
@@ -98,9 +105,6 @@ export function assertConfigured() {
   if (secret && jwks) {
     console.warn('[yarnoo] both YARNOO_JWT_SECRET and YARNOO_JWKS_URL are set - verifying with the JWKS only');
   }
-  if (production && !config.issuer) {
-    console.warn('[yarnoo] YARNOO_JWT_ISSUER is not set - any issuer holding the key will be accepted');
-  }
   if (config.profileSource === 'api' && !env.YARNOO_PROFILE_URL) {
     throw new Error('[yarnoo] YARNOO_PROFILE_SOURCE=api needs YARNOO_PROFILE_URL');
   }
@@ -112,6 +116,10 @@ export function assertConfigured() {
   }
   if (config.profileSource === 'postgres' && /[?&](sslmode|sslrootcert)=/i.test(env.YARNOO_DATABASE_URL)) {
     console.warn('[yarnoo] YARNOO_DATABASE_URL carries sslmode/sslrootcert - those override YARNOO_DATABASE_SSL');
+  }
+  // Without it, any token signed with the key is accepted whoever issued it.
+  if (!config.issuer) {
+    throw new Error('[yarnoo] YARNOO_JWT_ISSUER must be set to the exact `iss` Yarnoo signs with');
   }
   if (!['claims', 'api', 'postgres'].includes(config.profileSource)) {
     throw new Error(`[yarnoo] YARNOO_PROFILE_SOURCE must be claims, api or postgres - got "${config.profileSource}"`);
@@ -177,8 +185,12 @@ export async function verifyHandoff(token) {
       clockTolerance: 60
     }));
   } catch (err) {
-    // jose reports both a passed `exp` and an `iat` older than maxTokenAge as expired.
-    throw new SignInError(err?.code === 'ERR_JWT_EXPIRED' ? 'expired' : 'invalid_token', err?.message);
+    // jose reports both a passed `exp` and an `iat` older than maxTokenAge as
+    // expired. Yarnoo's key set being unreachable is an outage, not a forgery.
+    const code = err?.code === 'ERR_JWT_EXPIRED' ? 'expired'
+      : err?.code === 'ERR_JWKS_TIMEOUT' || (jwks && err?.code === 'ERR_JOSE_GENERIC') ? 'unavailable'
+      : 'invalid_token';
+    throw new SignInError(code, err?.message);
   }
 
   if (config.eventId) {
@@ -284,7 +296,9 @@ async function fromPostgres(id) {
     pgPool = new pg.Pool({
       connectionString: env.YARNOO_DATABASE_URL,
       max: 3,
+      keepAlive: true,
       statement_timeout: 3000,
+      query_timeout: 3000,
       connectionTimeoutMillis: 3000,
       // Verified TLS unless told otherwise. Managed databases with a private CA
       // (RDS, Azure, ...) need YARNOO_DATABASE_CA, the CA bundle as PEM.

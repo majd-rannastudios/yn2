@@ -5,8 +5,9 @@ import path from 'node:path';
 // Persistence.
 //
 // The whole event is small enough to hold in memory and snapshot as one blob,
-// so that is exactly what we do. Postgres when DATABASE_URL is set (Railway
-// injects it), a local JSON file otherwise, so `npm start` needs no setup.
+// so that is exactly what we do. Postgres when DATABASE_URL is set (on Railway,
+// reference the database service's variable), a local JSON file otherwise, so
+// `npm start` needs no setup.
 //
 // Writes are debounced: a room of 300 people heartbeating is a lot of churn
 // and none of it needs to hit disk immediately. What matters is that a crash

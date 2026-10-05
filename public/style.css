@@ -290,7 +290,7 @@ label .muted { font-weight: 400; }
 .wheel-holder { position: relative; width: min(76vw, 310px); aspect-ratio: 1; }
 
 /* A ring of stage light around the wheel, then a white rim, so even the
-   Purple and Red segments stand clear of the magenta page. */
+   Magenta segment stands clear of the magenta page. */
 .wheel-holder::before {
   content: '';
   position: absolute;
@@ -385,7 +385,8 @@ label .muted { font-weight: 400; }
   line-height: 1.4;
 }
 
-.people { list-style: none; margin-top: 12px; display: grid; gap: 8px; }
+/* minmax(0, 1fr): a long role must ellipsis inside the row, not widen the list past a 360px screen. */
+.people { list-style: none; margin-top: 12px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
 .person {
   display: flex;
   align-items: center;
@@ -410,7 +411,7 @@ label .muted { font-weight: 400; }
 .avatar { overflow: hidden; }
 .avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .person-text { flex: 1; min-width: 0; }
-.person-name { font-weight: 600; font-size: 15.5px; }
+.person-name { font-weight: 600; font-size: 15.5px; overflow-wrap: anywhere; }
 .person-meta { font-size: 13px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* Their Yarnoo profile: the Playbook's round arrow button. */

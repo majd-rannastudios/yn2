@@ -5,6 +5,14 @@ const N = Number(process.argv[2] || 300);
 const j=(p,o)=>fetch(BASE+p,o).then(async r=>({ok:r.ok,body:await r.json().catch(()=>null)}));
 
 (async () => {
+  // These scripts reset the event and seat guests through the name form, so
+  // they need a local server with Yarnoo sign-in off (or YARNOO_AUTH=optional).
+  // Against a members-only server they would wipe the room and then fail.
+  const cfg = await j('/api/config');
+  if (cfg.body?.auth === 'required') {
+    console.error(`${BASE} is members-only (YARNOO_AUTH=required). Run this against a local server with Yarnoo sign-in off.`);
+    process.exit(1);
+  }
   const login = await j('/api/admin/login',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({pin:PIN})});
   const admin = login.body.token;
   const A=(p,b)=>j(p,{method:b?'POST':'GET',headers:{'content-type':'application/json','x-admin-token':admin},body:b?JSON.stringify(b):undefined});
@@ -17,7 +25,7 @@ const j=(p,o)=>fetch(BASE+p,o).then(async r=>({ok:r.ok,body:await r.json().catch
     await Promise.all(Array.from({length:N/6},(_,i)=>{
       const n=batch*(N/6)+i;
       return j('/api/join',{method:'POST',headers:{'content-type':'application/json'},
-        body:JSON.stringify({name:'Guest '+n,company:'Company '+(n%25),role:'Attendee'})}).then(r=>tokens.push(r.body.token));
+        body:JSON.stringify({name:'Guest '+n,company:'Company '+(n%25),role:'Attendee'})}).then(r=>{ if (r.ok) tokens.push(r.body.token); });
     }));
   }
   console.log(`${tokens.length} guests joined in ${Date.now()-t0}ms`);

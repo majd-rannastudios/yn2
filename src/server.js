@@ -14,8 +14,20 @@ import * as yarnoo from './yarnoo.js';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3000;
 const ADMIN_PIN = process.env.ADMIN_PIN || '1234';
+const production = process.env.NODE_ENV === 'production';
+
+// The console can export every guest's name, company and Yarnoo id, remove
+// people and reset the night. A four-digit PIN falls to a script in seconds,
+// so a production deploy must set a real passphrase.
+if (production && (!process.env.ADMIN_PIN || ADMIN_PIN === '1234' || ADMIN_PIN.length < 8)) {
+  throw new Error('[server] set ADMIN_PIN to a passphrase of at least 8 characters (not 1234) before running in production');
+}
 
 const app = express();
+// Railway (like most hosts) sits one proxy in front of the app. Trusting that
+// one hop gives the real client address for login throttling and the real
+// https scheme for redirects.
+app.set('trust proxy', 1);
 app.use(express.json({ limit: '64kb' }));
 // Static files revalidate rather than sit in a browser cache for an hour.
 // `no-cache` does not mean "do not store" - the file is still cached, the
@@ -132,11 +144,13 @@ app.post('/api/join', (req, res) => {
 app.get('/api/me', (req, res) => {
   const guest = state.touch(req.query.token);
   if (!guest) return res.status(404).json({ error: 'unknown' });
+  state.reseat(guest); // back after missing a rotation: seat them now
   res.json(state.guestView(guest));
 });
 
 app.post('/api/heartbeat', (req, res) => {
   const guest = state.touch(req.body?.token);
+  if (guest) state.reseat(guest);
   res.json({ ok: !!guest });
 });
 
@@ -151,23 +165,46 @@ app.get('/api/qr', async (req, res) => {
 
 // --- operator console ------------------------------------------------------
 
-const adminTokens = new Set();
+/** admin token -> issued at. A console session lasts one long night, not forever. */
+const adminTokens = new Map();
+const ADMIN_SESSION_MS = 12 * 60 * 60_000;
+const isAdmin = token => {
+  const issued = token && adminTokens.get(token);
+  if (!issued) return false;
+  if (Date.now() - issued > ADMIN_SESSION_MS) { adminTokens.delete(token); return false; }
+  return true;
+};
+
+// Wrong PINs slow down per client address: five free tries a minute, then a
+// doubling wait up to a minute. Per address rather than global, so someone
+// hammering the login cannot lock the operator out mid-event.
+const loginFailures = new Map();
+const digest = value => crypto.createHash('sha256').update(String(value)).digest();
 
 app.post('/api/admin/login', (req, res) => {
-  const pin = String(req.body?.pin ?? '');
-  // Constant-time-ish compare so the PIN cannot be probed by timing.
-  const ok =
-    pin.length === ADMIN_PIN.length &&
-    crypto.timingSafeEqual(Buffer.from(pin), Buffer.from(ADMIN_PIN));
-  if (!ok) return res.status(401).json({ error: 'Wrong PIN' });
+  const now = Date.now();
+  const seen = loginFailures.get(req.ip);
+  if (seen?.until > now) {
+    res.setHeader('Retry-After', String(Math.ceil((seen.until - now) / 1000)));
+    return res.status(429).json({ error: 'Too many wrong PINs - wait a moment and try again' });
+  }
+  // Compare digests: constant time, and safe for passphrases of any length or script.
+  const ok = crypto.timingSafeEqual(digest(req.body?.pin ?? ''), digest(ADMIN_PIN));
+  if (!ok) {
+    const fails = (seen && now - seen.first < 60_000 ? seen.fails : 0) + 1;
+    const until = fails >= 5 ? now + Math.min(60_000, 1000 * 2 ** (fails - 5)) : 0;
+    if (loginFailures.size > 5000) loginFailures.clear();
+    loginFailures.set(req.ip, { fails, first: seen && now - seen.first < 60_000 ? seen.first : now, until });
+    return res.status(401).json({ error: 'Wrong PIN' });
+  }
+  loginFailures.delete(req.ip);
   const token = crypto.randomBytes(24).toString('hex');
-  adminTokens.add(token);
+  adminTokens.set(token, now);
   res.json({ token });
 });
 
 function requireAdmin(req, res, next) {
-  const token = req.get('x-admin-token') || req.query.admin;
-  if (!token || !adminTokens.has(token)) {
+  if (!isAdmin(req.get('x-admin-token'))) {
     return res.status(401).json({ error: 'Not signed in' });
   }
   next();
@@ -215,13 +252,18 @@ app.get('/api/palette', (_req, res) => res.json(PALETTE));
 // back to file storage is visible instead of being discovered mid-event.
 app.get('/health', (_req, res) => {
   const degraded = store.isDegraded();
-  res.status(degraded ? 503 : 200).json({
-    ok: !degraded,
+  // In production the event must survive a redeploy. Without DATABASE_URL it
+  // would live on the host's throwaway disk - fail the health check instead.
+  const ephemeral = production && !process.env.DATABASE_URL;
+  res.status(degraded || ephemeral ? 503 : 200).json({
+    ok: !degraded && !ephemeral,
     store: store.driverName(),
     signIn: yarnoo.config.mode,
     warning: degraded
       ? 'DATABASE_URL is set but Postgres is not connected - state will not survive a redeploy'
-      : undefined,
+      : ephemeral
+        ? 'DATABASE_URL is not set - state is on local disk and will not survive a redeploy'
+        : undefined,
     status: state.event.status,
     round: state.event.roundIndex,
     guests: state.participants.size,
@@ -251,6 +293,12 @@ wss.on('connection', (socket, req) => {
   socket.isAlive = true;
   socket.on('pong', () => { socket.isAlive = true; });
   socket.on('error', () => {});
+  // A phone reconnecting after missing a rotation gets seated before its
+  // first view. reseat() broadcasts, which reaches this socket too.
+  if (socket.role === 'guest') {
+    const guest = state.touch(socket.token);
+    if (guest && state.reseat(guest)) return;
+  }
   push(socket);
 });
 
@@ -266,7 +314,7 @@ function push(socket) {
     payload = { type: 'guest', data: state.guestView(guest) };
   } else if (socket.role === 'screen') {
     payload = { type: 'screen', data: state.screenView() };
-  } else if (socket.role === 'admin' && adminTokens.has(socket.token)) {
+  } else if (socket.role === 'admin' && isAdmin(socket.token)) {
     payload = { type: 'admin', data: state.adminView() };
   }
   if (payload) socket.send(JSON.stringify(payload));

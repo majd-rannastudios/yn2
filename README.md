@@ -26,7 +26,11 @@ YARNOO_DEV_SIGNIN=1 ADMIN_PIN=1234 npm start      # try Sign in with Yarnoo loca
 | Operator console | `/admin` | whoever is running the room |
 | Projector view | `/screen` | the big screen in the hall |
 
-Copy `.env.example` to `.env` and set `ADMIN_PIN` before any real event.
+`.env.example` lists every variable the app reads. Set them as environment
+variables — in Railway's Variables tab, your host's equivalent, or your shell
+(`ADMIN_PIN=... npm start`); the app does not load a `.env` file. `ADMIN_PIN`
+defaults to `1234` locally; in production the server refuses to start without a
+passphrase of 8+ characters.
 
 ## Sign in with Yarnoo
 
@@ -81,7 +85,7 @@ never choose a shape that violates the rule. A 60-person circle was never a
 conversation anyway.
 
 This is also why the number of circles matters less than it looks: the planner
-answers fewer colours with more huddles per circle. Five circles or ten, same
+answers fewer colours with more huddles per circle. Three circles or five, same
 result.
 
 ### Measured
@@ -98,6 +102,11 @@ avg distinct people met: 50.0 | repeat pairs across the whole event: 0
 
 `npm run simulate` compares huddles against whole-circle matching on a synthetic
 room. `GUESTS=180 COLORS=5 ROUNDS=12 npm run simulate` to change the shape.
+
+`npm run load`, `npm run e2e` and `scripts/demo.js` reset the event and seat
+guests through the name form, so run them against a local server with Yarnoo
+sign-in off (or `YARNOO_AUTH=optional`) — never a live one. They refuse to run
+against a members-only server.
 
 ## Colour: one palette, Yarnoo's
 
@@ -136,7 +145,7 @@ the brand's own files in `public/brand/fonts/` so nothing depends on venue wifi
 reaching a font CDN.
 
 **Logo:** the white Yarnoo lockup at the Playbook's 55px digital minimum. Every
-asset is in `public/brand/` — see `public/brand/README.md`.
+asset is in `public/brand/` — see [docs/BRAND.md](docs/BRAND.md).
 
 **Website:** `yarnoo.com` sits at the foot of all three pages.
 
@@ -182,10 +191,15 @@ and export a CSV of everyone who attended — including their Yarnoo ids.
 One Node service and Postgres; on Railway, `railway.json` is already set up.
 The full checklist — variables, the Yarnoo settings, and the custom domain — is
 in [docs/YARNOO-INTEGRATION.md](docs/YARNOO-INTEGRATION.md#putting-it-on-a-yarnoo-domain).
-Three things worth knowing up front:
+Worth knowing up front:
 
 - **Set `PUBLIC_URL`** to the domain guests use. The QR code encodes it and the
   Yarnoo `redirect_uri` is built from it.
+- **Point `DATABASE_URL` at Postgres** — on Railway, `${{Postgres.DATABASE_URL}}`
+  on the app service; it is not shared automatically. In production `/health`
+  fails without it, because the event would otherwise live on throwaway disk.
+- **Set a real `ADMIN_PIN`** — 8+ characters. The console can export every
+  guest's Yarnoo id; the server will not start in production without one.
 - **A custom domain needs two DNS records** on Railway: the `CNAME` routes
   traffic and the `TXT _railway-verify.<subdomain>` proves ownership. With only
   the CNAME the domain never verifies, no certificate is issued, and Railway's
@@ -198,9 +212,9 @@ Three things worth knowing up front:
   out contradictory colours, so `numReplicas` is pinned to 1. Scaling this app
   means moving round state into Postgres proper, not adding instances.
 
-`/health` reports which store won and the sign-in mode, so a deploy that quietly
-fell back to file storage — or came up without Yarnoo sign-in — is visible
-before an event rather than during one.
+`/health` reports which store won and the sign-in mode, and fails in production
+without Postgres. A half-configured Yarnoo sign-in stops the server at boot, so a
+bad deploy is visible before an event rather than during one.
 
 ## Layout
 
@@ -213,7 +227,7 @@ src/store.js       snapshot persistence (Postgres or file)
 src/config.js      palette, icebreaker questions, cost weights
 src/server.js      HTTP + WebSocket
 public/            guest page, operator console, projector view, brand assets
-docs/              the Yarnoo integration guide
+docs/              the Yarnoo integration guide, brand asset notes
 scripts/           e2e checks, load test, offline simulation, test tokens
 ```
 

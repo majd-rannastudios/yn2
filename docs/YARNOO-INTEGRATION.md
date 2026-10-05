@@ -54,16 +54,20 @@ Set it as `YARNOO_SIGNIN_URL`. The event app sends the phone there with:
 |---|---|
 | `redirect_uri` | Where to send the member back: `https://<event domain>/auth/yarnoo/callback` |
 | `state` | Opaque value. **Return it unchanged.** |
-| `audience` | `spin-the-wheel` (or `YARNOO_JWT_AUDIENCE`) — put it in the token's `aud` |
+| `audience` | Informational: `spin-the-wheel` (or `YARNOO_JWT_AUDIENCE`). **Do not copy it into the token** — see step 1 |
 | `event` | Present when `YARNOO_EVENT_ID` is set — the event the member must be registered for |
 
 The endpoint must:
 
 1. **Check `redirect_uri` against an allow-list — exact string match** with the
    callback URL of your deployment(s). Never redirect a token anywhere else.
+   Store the audience with each allow-list entry (for example
+   `https://event.yarnoo.com/auth/yarnoo/callback` → `spin-the-wheel`) and sign
+   `aud` from the entry that matched — never from the request, or any other app
+   on the same key could ask for tokens this one accepts.
 2. Sign the member in, or reuse their existing Yarnoo session.
-3. If `event` is given, check the member is registered for it. If not, redirect
-   back with `?error=not_registered&state=…` instead of a token.
+3. If `event` is given, check the member is registered for exactly that event.
+   If not, redirect back with `?error=not_registered&state=…` instead of a token.
 4. Sign a token (below) and redirect to `redirect_uri?token=<JWT>&state=<state>`.
 5. If the member cancels, redirect with `?error=access_denied&state=…`.
 
@@ -74,15 +78,18 @@ every token is accepted **once**: mint a fresh one per link.
 
 ### 2. The token
 
-A JWT. Keep it short-lived; the app refuses anything older than 10 minutes.
+A JWT. Keep it short-lived — 5 minutes is plenty. The app allows 60 seconds of
+clock skew, so it refuses a token whose `exp` passed more than 60 s ago or whose
+`iat` is more than 11 minutes old. Keep Yarnoo's servers NTP-synced: an `iat` or
+`nbf` more than 60 s in the future is refused too.
 
 | Claim | Required | Example | Used for |
 |---|---|---|---|
 | `sub` | **yes** | `"48213"` | The Yarnoo member id — the guest's identity |
-| `iss` | **yes** | `"https://yarnoo.com"` | Must equal `YARNOO_JWT_ISSUER` |
+| `iss` | **yes** | `"https://yarnoo.com"` | Must equal `YARNOO_JWT_ISSUER` (required on the event side too) |
 | `aud` | **yes** | `"spin-the-wheel"` | Must equal `YARNOO_JWT_AUDIENCE` |
 | `iat`, `exp` | **yes** | now, now + 300 | Age and expiry |
-| `jti` | **yes** | random UUID | A unique id — each token is accepted once |
+| `jti` | **yes** | random UUID | A unique, non-empty id — each token is accepted once |
 | `name` | recommended | `"Layla Haddad"` | Shown to the group (60 chars) |
 | `picture` | optional | `https://cdn.yarnoo.com/u/48213.jpg` | Photo in group lists (https only) |
 | `role` | optional | `"Singer"` | Under the name (also read from `headline`, `category`, `title`) |
@@ -120,7 +127,9 @@ const token = await new SignJWT({
   .setJti(crypto.randomUUID())
   .sign(new TextEncoder().encode(process.env.SPIN_THE_WHEEL_SECRET));
 
-res.redirect(`${allowedRedirectUri}?${new URLSearchParams({ token, state: req.query.state })}`);
+// Only echo state when there was one - "state=undefined" would be refused.
+const back = new URLSearchParams({ token, ...(req.query.state ? { state: String(req.query.state) } : {}) });
+res.redirect(`${allowedRedirectUri}?${back}`);
 ```
 
 **PHP** (`firebase/php-jwt`):
@@ -158,8 +167,8 @@ token = jwt.encode({
     "iat": now, "exp": now + 300, "jti": uuid.uuid4().hex,
     "name": user.name, "picture": user.avatar_url, "role": user.headline,
     "company": user.company, "profile_url": f"https://yarnoo.com/u/{user.username}",
-    "event": request.args.get("event"),
-}, SPIN_THE_WHEEL_SECRET, algorithm="HS256")
+    "event": request.args.get("event"),  # only after checking registration
+}, SPIN_THE_WHEEL_SECRET, algorithm="HS256")  # PyJWT 2.x returns a str
 ```
 
 #### Signing — RS256 / ES256 with published keys (no shared secret)
@@ -167,8 +176,17 @@ token = jwt.encode({
 If Yarnoo already signs JWTs with a private key (or runs an OIDC provider), keep
 the private key on Yarnoo's side and publish the public keys as a JWKS. Set
 `YARNOO_JWKS_URL` (e.g. `https://yarnoo.com/.well-known/jwks.json`) instead of
-`YARNOO_JWT_SECRET`. Accepted algorithms: RS256, PS256, ES256, EdDSA. Keys are
-fetched and cached by `kid`, so rotation needs no change on the event side.
+`YARNOO_JWT_SECRET`. Accepted `alg` header values: RS256, PS256, ES256, EdDSA.
+
+Put a `kid` in every token header — without one, verification fails as soon as
+the JWKS holds two keys of the same type, which is exactly what happens during a
+rotation. The event app caches the JWKS for 10 minutes and refetches early when
+it meets an unknown `kid`, at most once every 30 seconds. So to rotate: publish
+the new key, wait at least a minute, then start signing with it, and keep the
+old key published for at least 11 minutes after the last token it signed.
+Nothing changes on the event side. The JWKS URL must stay reachable during an
+event: once the cached copy is 10 minutes old, a sign-in that cannot fetch it is
+refused as `unavailable`.
 
 ### 3. Profiles
 
@@ -209,16 +227,18 @@ YARNOO_PROFILE_SQL=select * from spin_the_wheel_profiles where id = $1
 
 TLS to that database verifies the server certificate by default
 (`YARNOO_DATABASE_SSL=verify`). A managed database with its own CA (RDS, Azure,
-…) needs `YARNOO_DATABASE_CA` set to the CA bundle (PEM; `
-` escapes are
-fine). `no-verify` skips the check and `disable` turns TLS off — for a private
-network only. An `sslmode` or `sslrootcert` inside `YARNOO_DATABASE_URL`
+…) needs `YARNOO_DATABASE_CA` set to the CA bundle (PEM; literal `\n` escapes
+are fine). `no-verify` skips the check and `disable` turns TLS off — for a
+private network only. An `sslmode` or `sslrootcert` inside `YARNOO_DATABASE_URL`
 overrides all of this.
 
-The id is always a bound parameter. If the profile lookup fails or is slow (4s
-API timeout, 3s query timeout), the guest is still seated with what the token
-said — a missing photo is better than a queue at the door. MySQL is not built in;
-it is one function in `src/yarnoo.js` (`fromPostgres`) to mirror with `mysql2`.
+The id is always a bound parameter. If the profile lookup fails or is slow (4 s
+API timeout; 3 s per query, plus up to 3 s to connect on the first lookup), the
+guest is still seated with what the token said — a missing photo is better than
+a queue at the door — and a returning member keeps the profile they already had.
+MySQL is not built in: it needs the `mysql2` package, a `fromMysql()` beside
+`fromPostgres()` in `src/yarnoo.js`, and `mysql` added to the accepted
+`YARNOO_PROFILE_SOURCE` values and to `enrich()`.
 
 ---
 
@@ -226,24 +246,30 @@ it is one function in `src/yarnoo.js` (`fromPostgres`) to mirror with `mysql2`.
 
 The app is one Node service plus Postgres. On Railway:
 
-1. New project from this repo. Add a **Postgres** service — `DATABASE_URL` is
-   injected. Keep **one replica** (`railway.json` pins it): the live event is held
-   in memory and snapshotted to Postgres; two replicas would hand out conflicting
-   colours.
-2. Set variables on the app service:
+1. New project from this repo. Add a **Postgres** service, then on the app
+   service set `DATABASE_URL=${{Postgres.DATABASE_URL}}` (use the database
+   service's real name if it is not `Postgres`). Railway does not share it
+   automatically; without it the event lives on the container's throwaway disk,
+   so in production `/health` fails until it is set. Keep **one replica**
+   (`railway.json` pins it): the live event is held in memory and snapshotted to
+   Postgres; two replicas would hand out conflicting colours.
+2. Set variables on the app service. The app reads environment variables only —
+   it does not load a `.env` file.
 
    | Variable | Value |
    |---|---|
    | `NODE_ENV` | `production` |
-   | `ADMIN_PIN` | the operator console PIN |
+   | `DATABASE_URL` | `${{Postgres.DATABASE_URL}}` |
+   | `ADMIN_PIN` | a passphrase of 8+ characters (not `1234` — the server refuses to start without one). The console can export every guest's Yarnoo id and reset the live event. |
    | `PUBLIC_URL` | `https://event.yarnoo.com` (your domain — the QR encodes it) |
    | `YARNOO_SIGNIN_URL` | your handoff endpoint |
    | `YARNOO_JWT_SECRET` *or* `YARNOO_JWKS_URL` | the key |
-   | `YARNOO_JWT_ISSUER` | the `iss` you sign with |
+   | `YARNOO_JWT_ISSUER` | **required** — the exact `iss` you sign with |
    | `YARNOO_EVENT_ID` | optional — registered members only |
    | `YARNOO_PROFILE_SOURCE` (+ its settings) | optional |
 
-   With a sign-in URL and a key set, the app defaults to **members only**. Set
+   Setting any one of `YARNOO_SIGNIN_URL`, a key or `YARNOO_EVENT_ID` makes the
+   app **members only**, and it then refuses to start until the rest is set. Set
    `YARNOO_AUTH=optional` to also allow walk-ins without an account.
 3. **Custom domain needs two DNS records.** Add the domain in Railway, then create
    both records it shows: the `CNAME` (routes traffic) **and** the
@@ -255,14 +281,19 @@ The app is one Node service plus Postgres. On Railway:
    the CNAME target); `scripts/watch-domain.sh <domain> <cname target>` polls
    until HTTPS is live.
 4. Add `https://event.yarnoo.com/auth/yarnoo/callback` to the handoff endpoint's
-   redirect allow-list.
+   redirect allow-list, with audience `spin-the-wheel`.
 5. Check `https://event.yarnoo.com/health` — it reports the store (`postgres`)
    and the sign-in mode (`required`).
 
-The server refuses to boot with a half-configured sign-in (for example
-`YARNOO_AUTH=required` with no key, a secret under 32 characters, or
-`YARNOO_DEV_SIGNIN` left on next to a real key), so a bad deploy fails its health
-check instead of locking guests out — or letting anyone in.
+The server refuses to boot with a half-configured setup — a Yarnoo setting
+without the rest (sign-in URL, key, issuer), a secret under 32 characters,
+`YARNOO_DEV_SIGNIN` left on next to a real key, or a weak `ADMIN_PIN` — so a bad
+deploy fails its health check instead of locking guests out, or letting anyone in.
+
+**Upgrading an instance that already ran an event:** export the CSV from the
+console, then use *Reset everything* before the event. An event saved by an older
+build with more colours is re-cut into the five Yarnoo circles on load, but its
+colour history in the CSV is not relabelled.
 
 ---
 
@@ -273,29 +304,37 @@ check instead of locking guests out — or letting anyone in.
   lets you pick a member; it signs a token exactly as Yarnoo will, with a
   throwaway secret of its own. It is never mounted when `NODE_ENV=production`, and
   the server refuses to start if it is combined with a real Yarnoo setting.
-- **Against a deployment:** with the deployment's secret,
+- **Against a deployment:** `scripts/yarnoo-token.js` signs with the same
+  variables the server reads — export whichever the deployment sets:
   ```
-  YARNOO_JWT_SECRET=… YARNOO_JWT_ISSUER=https://yarnoo.com \
+  YARNOO_JWT_SECRET=… YARNOO_JWT_ISSUER=<the deployment's issuer> YARNOO_EVENT_ID=<if set> \
     node scripts/yarnoo-token.js --base https://event.yarnoo.com \
-      --sub 48213 --name "Layla Haddad" --role Singer --company "Stage Nine"
+      --sub test-1 --name "Test Member" --role Singer --company "Stage Nine"
   ```
-  prints a callback URL — open it on a phone and you are seated as that member.
+  It prints a callback URL that works once, within 5 minutes (`--ttl` changes
+  that; `--picture`, `--profile` and `--event` are also accepted). Open it on a
+  phone and you are seated as that member. The test guest is a real seat: use
+  *Reset everything* in the console before the event.
 - **The checks:** `npm run e2e:yarnoo` boots its own servers and verifies the
   handoff, including the failure cases below.
 
 ## What the app checks, and what each refusal means
 
-The guest lands back on the join screen with a plain-language message.
+The guest lands back on the join screen with a plain-language message, and the
+server log names the exact reason.
 
 | Code | Cause |
 |---|---|
-| `invalid_token` | Bad signature, wrong `iss`/`aud`, disallowed algorithm (including `alg: none`), or no `sub` or `jti` |
-| `expired` | `exp` passed, or `iat` more than 10 minutes ago |
+| `invalid_token` | Bad signature, wrong `iss`/`aud`, disallowed algorithm (including `alg: none`), no `sub` or `jti`, or an `iat`/`nbf` more than 60 s in the future (clock skew) |
+| `expired` | `exp` more than 60 s in the past, or `iat` more than 11 minutes ago (10 minutes plus 60 s skew) |
 | `already_used` | The `jti` was already accepted once |
-| `not_registered` | `YARNOO_EVENT_ID` is set and the token's `event`/`events` does not include it |
-| `state_mismatch` | The returned `state` is not the one this phone was given |
+| `not_registered` | `YARNOO_EVENT_ID` is set and the token's `event`/`events` does not include it — or Yarnoo sent `error=not_registered` |
+| `state_mismatch` | The phone holds a state cookie and the returned `state` differs from it. A missing state or cookie is accepted (see direct links above) |
 | `event_ended` | A new member signed in after the event ended (existing guests can still sign back in to see who they met) |
-| `missing_token`, `access_denied`, … | No token, or an `error` sent back by Yarnoo |
+| `missing_token` | No token, or one over 8 KB |
+| `unavailable` | Yarnoo's JWKS could not be fetched (5 s timeout), or an unexpected server error |
+| `disabled` | The callback was reached while `YARNOO_AUTH=off` |
+| `access_denied`, … | Any other `error` sent back by Yarnoo |
 
 Also, by design:
 

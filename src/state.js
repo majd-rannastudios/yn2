@@ -47,14 +47,30 @@ const tokens = new Map();
 const byYarnoo = new Map();
 /** pairKey -> rounds shared */
 export const meetings = new Map();
+/** guest id -> Set of everyone they have shared a huddle with, for the wrap-up. */
+const metIndex = new Map();
+
+function indexMeeting(aId, bId) {
+  if (!metIndex.has(aId)) metIndex.set(aId, new Set());
+  if (!metIndex.has(bId)) metIndex.set(bId, new Set());
+  metIndex.get(aId).add(bId);
+  metIndex.get(bId).add(aId);
+}
 
 /** The round on the floor right now. */
 export let round = null;
 
 // --- guests ----------------------------------------------------------------
 
+/**
+ * A comparable key for a company name, in any script. Strips accents, Arabic
+ * harakat and tatweel, then compares letters and digits only - so "فرقة النور"
+ * and "فرقةُ النور" are the same company, and Arabic names are kept apart as
+ * reliably as Latin ones.
+ */
 const normaliseCompany = value =>
-  (value || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim() || null;
+  (value || '').normalize('NFKD').replace(/[\p{M}ـ]/gu, '').normalize('NFKC')
+    .toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim() || null;
 
 /**
  * Seat a guest. `yarnoo` is the member profile Yarnoo vouched for; without it
@@ -102,20 +118,45 @@ export function join({ name, company, role, yarnoo = null }) {
 export function joinYarnoo(profile) {
   const existing = participants.get(byYarnoo.get(profile.id));
   if (existing) {
-    // Keep their seat and history; take whatever Yarnoo now says about them.
+    // Keep their seat and history, and take whatever Yarnoo now says about
+    // them - but never blank a field because this sign-in did not carry it.
+    // A profile lookup that is down falls back to a token that may hold only
+    // the id, and that must not strip a member's photo, link or company.
     existing.name = profile.name || existing.name;
-    existing.company = profile.company;
-    existing.role = profile.role;
-    existing.companyKey = normaliseCompany(profile.company);
-    existing.avatarUrl = profile.avatarUrl;
-    existing.profileUrl = profile.profileUrl;
+    existing.role = profile.role || existing.role;
+    existing.avatarUrl = profile.avatarUrl || existing.avatarUrl;
+    existing.profileUrl = profile.profileUrl || existing.profileUrl;
+    if (profile.company) {
+      existing.company = profile.company;
+      existing.companyKey = normaliseCompany(profile.company);
+    }
     existing.lastSeen = Date.now();
+    // Back after missing rotations (a dead battery, a borrowed phone): seat
+    // them now, like a late arrival, rather than at the next rotation.
+    if (needsSeat(existing)) seatLatecomer(existing);
     persist();
     broadcast();
     return existing;
   }
   if (event.status === 'ended') return null;
   return join({ name: profile.name, company: profile.company, role: profile.role, yarnoo: profile });
+}
+
+/** In the room while a round is running, but in none of its groups. */
+const needsSeat = guest =>
+  event.status === 'running' && !!round && !round.groups.some(g => g.includes(guest.id));
+
+/**
+ * Seat a returning guest who missed the last rotation. Called when a phone
+ * comes back (an API poll or a fresh socket) - never from inside a broadcast,
+ * since it broadcasts itself.
+ */
+export function reseat(guest) {
+  if (!guest || !needsSeat(guest)) return false;
+  seatLatecomer(guest);
+  persist();
+  broadcast();
+  return true;
 }
 
 export function bytoken(token) {
@@ -154,6 +195,7 @@ function recordMeeting(aId, bId) {
   const seen = meetings.get(key) || 0;
   meetings.set(key, seen + 1);
   if (seen === 0) {
+    indexMeeting(aId, bId);
     const a = participants.get(aId);
     const b = participants.get(bId);
     if (a) a.metCount = (a.metCount || 0) + 1;
@@ -230,6 +272,14 @@ export function nextRound() {
     computedMs: ms
   };
 
+  // Anyone left out of this round (gone quiet) loses last round's colour, so
+  // their phone never sends them to a circle they are no longer part of.
+  // If they come back, reseat() places them like a late arrival.
+  const seated = new Set(roster.map(g => g.id));
+  for (const g of participants.values()) {
+    if (!seated.has(g.id)) { g.color = null; g.group = null; }
+  }
+
   // Commit: everyone in a huddle has now met everyone else in it.
   groups.forEach((group, gi) => {
     const color = plan.groupColor[gi];
@@ -302,6 +352,7 @@ export function resetEvent() {
   tokens.clear();
   byYarnoo.clear();
   meetings.clear();
+  metIndex.clear();
   round = null;
   event.status = 'setup';
   event.roundIndex = 0;
@@ -314,8 +365,10 @@ export function resetEvent() {
 
 export function configure(patch) {
   if (patch.name !== undefined) event.name = String(patch.name).slice(0, 80);
-  if (patch.colorCount !== undefined) {
-    event.colorCount = clamp(Math.round(patch.colorCount), 2, PALETTE.length);
+  // An empty or nonsense value (a select with nothing chosen sends 0) must not
+  // silently shrink the room to two circles.
+  if (patch.colorCount !== undefined && Number(patch.colorCount) >= 1) {
+    event.colorCount = clamp(Math.round(Number(patch.colorCount)), 2, PALETTE.length);
   }
   if (patch.roundMinutes !== undefined) {
     event.roundMinutes = clamp(Number(patch.roundMinutes), 1, 60);
@@ -381,7 +434,10 @@ export function guestView(guest) {
     return { ...base, assignment: null, metCount: metCountFor(guest.id), met: metList(guest.id) };
   }
 
-  if (event.status !== 'running' || !round || guest.color === null) {
+  // No colour, or one outside the circles now in play (the host lowered the
+  // count mid-round): wait for the next rotation rather than send a phone a
+  // colour it cannot draw.
+  if (event.status !== 'running' || !round || guest.color === null || !palette[guest.color]) {
     return { ...base, assignment: null, metCount: metCountFor(guest.id) };
   }
 
@@ -428,19 +484,15 @@ const card = p => ({
 /**
  * Everyone this guest shared a huddle with, for the wrap-up screen - the
  * point of signing in with Yarnoo is being able to find these people again.
- * Scans the pair log, so it is only built once the event has ended.
+ * Read from metIndex, so it costs the number of people met, not the size of
+ * the whole pair log, on every broadcast after the end.
  */
 function metList(id) {
-  const people = [];
-  for (const key of meetings.keys()) {
-    const sep = key.indexOf('|');
-    const a = key.slice(0, sep);
-    const b = key.slice(sep + 1);
-    const other = a === id ? b : b === id ? a : null;
-    const p = other && participants.get(other);
-    if (p) people.push(card(p));
-  }
-  return people.sort((x, y) => x.name.localeCompare(y.name));
+  return [...(metIndex.get(id) || [])]
+    .map(other => participants.get(other))
+    .filter(Boolean)
+    .map(card)
+    .sort((x, y) => x.name.localeCompare(y.name));
 }
 
 /** Counts per colour, for the projector screen and the operator console. */
@@ -574,15 +626,31 @@ export function hydrate(data) {
   }
   for (const [key, count] of data.meetings || []) meetings.set(key, count);
 
-  // Rebuild the per-guest counters from the pair log, so a snapshot taken
-  // before this counter existed still restores correctly.
+  // Rebuild the per-guest counters and the wrap-up index from the pair log,
+  // so a snapshot taken before either existed still restores correctly.
+  metIndex.clear();
   for (const g of participants.values()) g.metCount = 0;
   for (const key of meetings.keys()) {
     const sep = key.indexOf('|');
+    indexMeeting(key.slice(0, sep), key.slice(sep + 1));
     const a = participants.get(key.slice(0, sep));
     const b = participants.get(key.slice(sep + 1));
     if (a) a.metCount++;
     if (b) b.metCount++;
+  }
+
+  // A snapshot written by a build with a bigger palette (the Ranna build had
+  // eight colours) can point at colours that no longer exist. Keep the guests
+  // and their meetings, drop the stale assignment, and re-cut the room.
+  event.colorCount = clamp(Math.round(Number(event.colorCount)), 2, PALETTE.length);
+  const stale = (round?.groupColor || []).some(c => c >= PALETTE.length) ||
+    [...participants.values()].some(g => g.color !== null && g.color >= PALETTE.length);
+  if (stale) {
+    console.log('[hydrate] snapshot uses colours outside the current palette - re-cutting the room');
+    for (const g of participants.values()) { g.color = null; g.group = null; }
+    round = null;
+    if (event.status === 'running') nextRound();
+    else if (event.status === 'paused') event.status = 'setup';
   }
 
   // A restart must not silently swallow round time that already elapsed.

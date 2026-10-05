@@ -25,8 +25,12 @@ const check = (label, cond, detail = '') => {
 };
 
 const servers = [];
-async function boot(port, env, { expectExit = false } = {}) {
+async function boot(port, env, { expectExit = false, snapshot = null } = {}) {
   const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'stw-yarnoo-'));
+  if (snapshot) {
+    fs.mkdirSync(path.join(cwd, 'data'));
+    fs.writeFileSync(path.join(cwd, 'data', 'state.json'), JSON.stringify(snapshot));
+  }
   const child = spawn(process.execPath, [path.join(ROOT, 'src', 'server.js')], {
     cwd,
     env: { ...process.env, DATABASE_URL: '', NODE_ENV: 'development', PUBLIC_URL: '', ADMIN_PIN: '1234', PORT: String(port), ...env },
@@ -191,10 +195,11 @@ try {
   check('…but a member can still sign back in to see who they met', back.token === first.token);
 
   // --- profiles from Yarnoo's API, and a profile API that is down --------
+  let apiDown = false;
   const api = http.createServer((req, res) => {
     if (req.headers.authorization !== 'Bearer api-key-1') { res.writeHead(401); return res.end(); }
     const id = decodeURIComponent(req.url.split('/').pop());
-    if (id === 'u-down') { res.writeHead(500); return res.end(); }
+    if (id === 'u-down' || apiDown) { res.writeHead(500); return res.end(); }
     res.writeHead(200, { 'content-type': 'application/json' });
     res.end(JSON.stringify({ data: { id, display_name: 'Karim From API', headline: 'DJ', agency: 'Beat Lab', avatar_url: 'https://cdn.yarnoo.test/k.jpg', profile_url: `https://yarnoo.test/u/${id}` } }));
   }).listen(3319);
@@ -214,6 +219,12 @@ try {
   const down = await callback(B.base, await mint({ sub: 'u-down', name: 'Still Gets In' }));
   const downMe = await json(B.base, `/api/me?token=${down.token}`);
   check('a profile API outage does not stop anyone at the door', downMe.me?.name === 'Still Gets In');
+  apiDown = true;
+  const outage = await callback(B.base, await mint({ sub: 'u-200', name: undefined, role: undefined, company: undefined }));
+  const kept = await json(B.base, `/api/me?token=${outage.token}`);
+  check('signing in again during an outage keeps the profile', outage.token === fromApi.token &&
+    kept.me?.company === 'Beat Lab' && kept.me?.role === 'DJ' && kept.me?.avatarUrl === 'https://cdn.yarnoo.test/k.jpg', JSON.stringify(kept.me));
+  apiDown = false;
   api.close();
 
   // --- configuration that must not boot -----------------------------------
@@ -229,14 +240,56 @@ try {
     YARNOO_PROFILE_SQL: 'select * from p where id = $1', YARNOO_DATABASE_SSL: 'sure'
   }, { expectExit: true });
   check('an unknown YARNOO_DATABASE_SSL refuses to boot', badSsl.code !== 0 && badSsl.code !== 'still running' && /YARNOO_DATABASE_SSL must be/.test(badSsl.log()), badSsl.log());
+  const halfEvent = await boot(3321, { YARNOO_EVENT_ID: EVENT }, { expectExit: true });
+  check('an event id alone makes the event members-only and refuses to boot', halfEvent.code !== 0 && halfEvent.code !== 'still running' && /needs YARNOO_SIGNIN_URL/.test(halfEvent.log()), halfEvent.log());
+  const halfKey = await boot(3322, { YARNOO_JWT_SECRET: SECRET, YARNOO_JWT_ISSUER: ISSUER }, { expectExit: true });
+  check('a key without a sign-in URL refuses to boot', halfKey.code !== 0 && halfKey.code !== 'still running' && /needs YARNOO_SIGNIN_URL/.test(halfKey.log()), halfKey.log());
+  const noIss = await boot(3323, { YARNOO_SIGNIN_URL: 'https://yarnoo.test/connect', YARNOO_JWT_SECRET: SECRET }, { expectExit: true });
+  check('sign-in without YARNOO_JWT_ISSUER refuses to boot', noIss.code !== 0 && noIss.code !== 'still running' && /YARNOO_JWT_ISSUER must be set/.test(noIss.log()), noIss.log());
+  const weakPin = await boot(3324, { NODE_ENV: 'production', ADMIN_PIN: '1234' }, { expectExit: true });
+  check('production refuses to start with a weak console PIN', weakPin.code !== 0 && weakPin.code !== 'still running' && /ADMIN_PIN/.test(weakPin.log()), weakPin.log());
   const prodDev = await boot(3315, {
-    NODE_ENV: 'production', YARNOO_DEV_SIGNIN: '1',
+    NODE_ENV: 'production', YARNOO_DEV_SIGNIN: '1', ADMIN_PIN: 'a-proper-passphrase',
     YARNOO_SIGNIN_URL: 'https://yarnoo.test/connect', YARNOO_JWT_SECRET: SECRET, YARNOO_JWT_ISSUER: ISSUER
   });
   check('dev sign-in never mounts in production', (await fetch(prodDev.base + '/auth/yarnoo/dev?redirect_uri=/auth/yarnoo/callback')).status === 404);
+  check('production /health fails without Postgres', (await fetch(prodDev.base + '/health')).status === 503);
+  const tries = [];
+  for (let i = 0; i < 6; i++) {
+    tries.push((await fetch(prodDev.base + '/api/admin/login', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ pin: `guess-${i}` }) })).status);
+  }
+  check('wrong console PINs are throttled', tries.slice(0, 5).every(code => code === 401) && tries[5] === 429, tries.join(','));
   const off = await boot(3316, {});
   check('with nothing configured the plain form still works', (await json(off.base, '/api/config')).auth === 'off' &&
     (await fetch(off.base + '/api/join', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: 'Local' }) })).status === 200);
+  // Colleagues with Arabic company names are kept apart like everyone else.
+  const offAdmin = await adminToken(off.base);
+  await admin(off.base, offAdmin, '/api/admin/action', { action: 'reset' });
+  for (let i = 0; i < 10; i++) {
+    await fetch(off.base + '/api/join', { method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ name: `ضيف ${i}`, company: i < 5 ? 'فرقة النور' : 'شركة الأفق' }) });
+  }
+  await admin(off.base, offAdmin, '/api/admin/config', { colorCount: 5, useHuddles: false });
+  const arabic = await admin(off.base, offAdmin, '/api/admin/action', { action: 'start' });
+  check('colleagues with Arabic company names are kept apart', arabic.round?.stats?.colleaguePairs === 0, JSON.stringify(arabic.round?.stats));
+
+  // An event saved by the eight-colour build must load into the five-colour one.
+  const old = {
+    version: 1,
+    event: { name: 'Old', status: 'running', colorCount: 6, roundMinutes: 10, huddleSize: 6, useHuddles: true, showQuestions: false,
+      roundIndex: 3, roundStartedAt: Date.now(), roundEndsAt: Date.now() + 300_000, pausedRemainingMs: null, absentAfterMinutes: 25 },
+    round: { index: 3, groups: [['a'], ['b'], ['c'], ['d'], ['e'], ['f']], groupColor: [0, 1, 2, 3, 4, 5], huddlesPerColor: 1, stats: {}, computedMs: 1 },
+    participants: 'abcdef'.split('').map((id, i) => ({ id, token: `tok-${id}`, name: `Guest ${id}`, company: '', role: '', companyKey: null,
+      joinedAt: Date.now(), lastSeen: Date.now(), metCount: 0, color: i, group: i, history: [i, i, i] })),
+    meetings: []
+  };
+  const O = await boot(3325, {}, { snapshot: old });
+  const oTok = await adminToken(O.base);
+  const oState = await admin(O.base, oTok, '/api/admin/state');
+  const views = await Promise.all('abcdef'.split('').map(id => json(O.base, `/api/me?token=tok-${id}`)));
+  check('an old eight-colour snapshot loads as five circles', oState.event.colorCount === 5 &&
+    views.every(v => !v.assignment || (v.assignment.color && v.assignment.colorIndex < 5)),
+    JSON.stringify({ colorCount: oState.event.colorCount, colours: views.map(v => v.assignment?.colorIndex) }));
 
   // --- the local stand-in for Yarnoo ---------------------------------------
   const D = await boot(3317, { YARNOO_DEV_SIGNIN: '1' });

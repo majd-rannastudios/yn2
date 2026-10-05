@@ -67,16 +67,41 @@
   // Which doors are open is the server's call: Yarnoo members only, members
   // plus walk-ins, or the plain form when Yarnoo sign-in is not set up.
   const showForm = () => { $('join-form').hidden = false; $('walkin-btn').hidden = true; };
-  fetch('/api/config').then(r => r.json()).then(cfg => {
-    if (cfg.auth === 'off') return showForm();
-    $('signin').hidden = false;
-    $('yarnoo-btn').href = cfg.signinPath;
-    $('walkin-btn').hidden = cfg.auth !== 'optional';
-  }).catch(showForm);
+  const loadConfig = (tries = 0) => fetch('/api/config', { cache: 'no-store' })
+    .then(r => { if (!r.ok) throw new Error(`config ${r.status}`); return r.json(); })
+    .then(cfg => {
+      if (cfg.auth === 'off') return showForm();
+      $('signin').hidden = false;
+      $('yarnoo-btn').href = cfg.signinPath || '/auth/yarnoo/start';
+      $('walkin-btn').hidden = cfg.auth !== 'optional';
+    })
+    .catch(() => {
+      // Venue wifi. Try again, then open both doors and let the server
+      // decide: /auth/yarnoo/start comes straight back when sign-in is off,
+      // and a members-only server turns a walk-in back to the Yarnoo door.
+      if (tries < 3) return setTimeout(() => loadConfig(tries + 1), 800 * 2 ** tries);
+      $('signin').hidden = false;
+      $('walkin-btn').hidden = false;
+    });
+  loadConfig();
   $('walkin-btn').addEventListener('click', showForm);
+
+  /** Pick up a seat this browser already has instead of joining a second time. */
+  const resumeSeat = () => {
+    const stored = localStorage.getItem('stw-token');
+    if (!stored || stored === token) return false;
+    token = stored;
+    show('wait');
+    refresh().then(connect);
+    return true;
+  };
+  // Back from Yarnoo sign-in restores the old join page from the back/forward
+  // cache, with no token in memory - but the seat is in storage.
+  addEventListener('pageshow', resumeSeat);
 
   $('join-form').addEventListener('submit', async e => {
     e.preventDefault();
+    if (resumeSeat()) return;
     // First real gesture of the session - the only moment a browser will let
     // us open an audio context.
     sound.unlock();
@@ -94,6 +119,17 @@
         })
       });
       const data = await res.json();
+      if (res.status === 403) {
+        // Members only: send them to the Yarnoo door, not a dead end.
+        $('join-form').hidden = true;
+        $('signin').hidden = false;
+        $('walkin-btn').hidden = true;
+        $('auth-error').textContent = data.error;
+        $('auth-error').hidden = false;
+        btn.disabled = false;
+        btn.textContent = 'Join the room';
+        return;
+      }
       if (!res.ok) throw new Error(data.error || 'Could not join');
       token = data.token;
       localStorage.setItem('stw-token', token);
@@ -168,11 +204,14 @@
     spinning = true;
     spinTo(view.assignment.colorIndex, view.colors.length, () => {
       spinning = false;
+      btn.disabled = false;
+      btn.textContent = 'Tap to spin';
+      // The host paused or ended the night while the wheel was turning:
+      // go where the event is now, not to a stale result.
+      if (!view.assignment) return apply(view);
       shownRound = view.event.roundIndex;
       renderResult();
       show('result');
-      btn.disabled = false;
-      btn.textContent = 'Tap to spin';
     });
   });
 
@@ -312,6 +351,7 @@
     view = next;
 
     if (view.event.status === 'ended') {
+      $('overlay').classList.remove('on');
       clearInterval(ticker);
       if (previous && previous.event.status !== 'ended') sound.finish();
       $('wait-title').textContent = 'That is a wrap';
@@ -327,6 +367,7 @@
 
     $('met-block').hidden = true;
     if (!view.assignment) {
+      $('overlay').classList.remove('on');
       $('wait-title').textContent = view.event.status === 'paused' ? 'Hold on' : 'You are in';
       $('wait-text').textContent = view.event.status === 'paused'
         ? 'The host has paused the rotation. Keep talking.'
