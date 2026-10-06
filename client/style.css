@@ -588,26 +588,6 @@ label .muted { font-weight: 400; }
 .site-foot a:hover,
 .site-foot a:active { border-color: var(--white); background: rgba(255, 255, 255, 0.1); }
 
-.offline {
-  position: fixed;
-  left: 50%;
-  bottom: calc(14px + env(safe-area-inset-bottom));
-  transform: translateX(-50%);
-  background: var(--white);
-  color: var(--magenta);
-  font-size: 13px;
-  font-weight: 600;
-  padding: 9px 16px 9px 14px;
-  border-radius: 999px;
-  box-shadow: var(--shadow);
-  display: none;
-  align-items: center;
-  gap: 8px;
-  z-index: 50;
-}
-.offline::before { content: ''; width: 9px; height: 9px; border-radius: 50%; background: var(--coral); }
-.offline.on { display: inline-flex; }
-
 @media (prefers-reduced-motion: reduce) {
   .wheel.spinning { transition-duration: 0.6s; }
   .screen.on, .result-color, .overlay.on { animation: none; }

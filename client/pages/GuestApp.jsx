@@ -65,7 +65,6 @@ export default function GuestApp() {
   const [joining, setJoining] = useState(false);
   const [enrolling, setEnrolling] = useState(false);
   const [contact, setContact] = useState(contactFromUrl);
-  const [offline, setOffline] = useState(false);
   const [overlay, setOverlay] = useState(false);
   const [spinning, setSpinning] = useState(false);
   const [spinLabel, setSpinLabel] = useState('Tap to spin');
@@ -199,10 +198,7 @@ export default function GuestApp() {
         return;
       }
       apply(await res.json());
-      setOffline(false);
-    } catch {
-      setOffline(true);
-    }
+    } catch { /* the socket retries on its own */ }
   }, [apply]);
 
   const connect = useCallback(() => {
@@ -218,9 +214,7 @@ export default function GuestApp() {
       const msg = JSON.parse(e.data);
       if (msg.type === 'guest') apply(msg.data);
     };
-    socket.onopen = () => setOffline(false);
     socket.onclose = () => {
-      setOffline(true);
       setTimeout(() => {
         if (tokenRef.current) connect();
       }, 2500 + Math.random() * 2500);
@@ -687,8 +681,6 @@ export default function GuestApp() {
         <p>New colour, new people. Tap to see where you are going.</p>
         <button type="button" onClick={dismissOverlay}>Spin again</button>
       </div>
-
-      <div className={`offline${offline ? ' on' : ''}`}>Reconnecting…</div>
     </>
   );
 }
