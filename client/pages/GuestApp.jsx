@@ -61,6 +61,7 @@ export default function GuestApp() {
   const [showLookup, setShowLookup] = useState(false);
   const [showWalkin, setShowWalkin] = useState(false);
   const [showForm, setShowForm] = useState(false);
+  const [eventEnded, setEventEnded] = useState(false);
   const [joining, setJoining] = useState(false);
   const [enrolling, setEnrolling] = useState(false);
   const [contact, setContact] = useState(contactFromUrl);
@@ -99,11 +100,18 @@ export default function GuestApp() {
         setScreen('wait');
       }
       const err = handoff.get('auth_error');
-      if (err) setAuthError(SIGNIN_ERRORS[err] || 'We could not confirm your Yarnoo sign-in. Please try again.');
+      if (err === 'event_ended') {
+        setEventEnded(true);
+        setShowLookup(false);
+        setShowWalkin(false);
+        setShowForm(false);
+      } else if (err) {
+        setAuthError(SIGNIN_ERRORS[err] || 'We could not confirm your Yarnoo sign-in. Please try again.');
+      }
     }
   }, []);
 
-  // Join doors from config
+  // Join doors from config; also learn if the event is already over.
   useEffect(() => {
     let cancelled = false;
     const load = (tries = 0) => {
@@ -111,6 +119,14 @@ export default function GuestApp() {
         .then(r => { if (!r.ok) throw new Error(`config ${r.status}`); return r.json(); })
         .then(cfg => {
           if (cancelled) return;
+          if (cfg.event?.status === 'ended') {
+            setEventEnded(true);
+            setShowLookup(false);
+            setShowWalkin(false);
+            setShowForm(false);
+            return;
+          }
+          setEventEnded(false);
           const lookup = cfg.doors?.lookup ?? (cfg.supabase?.auth && cfg.supabase.auth !== 'off');
           const walkin = cfg.doors?.walkin ?? (cfg.auth !== 'required');
           if (lookup) {
@@ -307,6 +323,14 @@ export default function GuestApp() {
         setJoining(false);
         return;
       }
+      if (res.status === 409 || /has finished/i.test(data.error || '')) {
+        setEventEnded(true);
+        setShowLookup(false);
+        setShowWalkin(false);
+        setShowForm(false);
+        setJoining(false);
+        return;
+      }
       if (!res.ok) throw new Error(data.error || 'Could not join');
       localStorage.setItem('stw-token', data.token);
       setToken(data.token);
@@ -332,7 +356,17 @@ export default function GuestApp() {
         body: JSON.stringify(body)
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Could not find your RSVP');
+      if (!res.ok) {
+        if (res.status === 409 || /has finished/i.test(data.error || '')) {
+          setEventEnded(true);
+          setShowLookup(false);
+          setShowWalkin(false);
+          setShowForm(false);
+          setEnrolling(false);
+          return;
+        }
+        throw new Error(data.error || 'Could not find your RSVP');
+      }
       localStorage.setItem('stw-token', data.token);
       setToken(data.token);
       tokenRef.current = data.token;
@@ -469,70 +503,79 @@ export default function GuestApp() {
 
           <div className="join-spacer" aria-hidden="true" />
 
-          {authError && <p className="auth-error" role="alert">{authError}</p>}
-
-          {showLookup && !showForm && (
-            <div className="signin">
-              <form className="contact-door" onSubmit={onEnroll}>
-                <div className="field">
-                  <label htmlFor="f-contact">Join with the email you used to sign up</label>
-                  <input
-                    id="f-contact"
-                    name="contact"
-                    autoComplete="username"
-                    required
-                    maxLength={120}
-                    placeholder="Email or phone from your Yarnoo account"
-                    value={contact}
-                    onChange={e => setContact(e.target.value)}
-                  />
-                </div>
-                <button className="block" type="submit" disabled={enrolling}>
-                  {enrolling ? 'Looking up…' : 'Continue'}
-                </button>
-              </form>
-              {showWalkin && (
-                <div className="door-or">
-                  <span>or</span>
-                  <p className="door-hint">No Yarnoo account? Join without one.</p>
-                  <button
-                    className="ghost block"
-                    type="button"
-                    onClick={() => { setShowForm(true); setAuthError(null); }}
-                  >
-                    Join as a guest
-                  </button>
-                </div>
-              )}
+          {eventEnded ? (
+            <div className="join-ended">
+              <h2>That is a wrap</h2>
+              <p className="muted">This event has finished. Thanks for spinning with Yarnoo.</p>
             </div>
-          )}
+          ) : (
+            <>
+              {authError && <p className="auth-error" role="alert">{authError}</p>}
 
-          {showForm && (
-            <form onSubmit={onJoin}>
-              {showLookup && (
-                <button
-                  className="ghost block back-door"
-                  type="button"
-                  onClick={() => { setShowForm(false); setAuthError(null); }}
-                >
-                  ← Back to email or phone
-                </button>
+              {showLookup && !showForm && (
+                <div className="signin">
+                  <form className="contact-door" onSubmit={onEnroll}>
+                    <div className="field">
+                      <label htmlFor="f-contact">Join with the email you used to sign up</label>
+                      <input
+                        id="f-contact"
+                        name="contact"
+                        autoComplete="username"
+                        required
+                        maxLength={120}
+                        placeholder="Email or phone from your Yarnoo account"
+                        value={contact}
+                        onChange={e => setContact(e.target.value)}
+                      />
+                    </div>
+                    <button className="block" type="submit" disabled={enrolling}>
+                      {enrolling ? 'Looking up…' : 'Continue'}
+                    </button>
+                  </form>
+                  {showWalkin && (
+                    <div className="door-or">
+                      <span>or</span>
+                      <p className="door-hint">No Yarnoo account? Join without one.</p>
+                      <button
+                        className="ghost block"
+                        type="button"
+                        onClick={() => { setShowForm(true); setAuthError(null); }}
+                      >
+                        Join as a guest
+                      </button>
+                    </div>
+                  )}
+                </div>
               )}
-              <div className="field">
-                <label htmlFor="f-name">Your name</label>
-                <input id="f-name" name="name" autoComplete="given-name" required maxLength={60} placeholder="e.g. Sara" />
-              </div>
-              <div className="field">
-                <label htmlFor="f-company">Company <span className="muted">(optional)</span></label>
-                <input id="f-company" name="company" autoComplete="organization" maxLength={80} placeholder="e.g. Yarnoo" />
-              </div>
-              <div className="field">
-                <label htmlFor="f-role">Role <span className="muted">(optional)</span></label>
-                <input id="f-role" name="role" autoComplete="organization-title" maxLength={80} placeholder="e.g. Singer, DJ, Event planner" />
-              </div>
-              <button className="block" type="submit" disabled={joining}>{joining ? 'Joining…' : 'Join the room'}</button>
-              <p className="consent">If you add a company, we use it only to seat you away from your own colleagues, and to show your name to the small group you are matched with. Nothing is shared beyond this event.</p>
-            </form>
+
+              {showForm && (
+                <form onSubmit={onJoin}>
+                  {showLookup && (
+                    <button
+                      className="ghost block back-door"
+                      type="button"
+                      onClick={() => { setShowForm(false); setAuthError(null); }}
+                    >
+                      ← Back to email or phone
+                    </button>
+                  )}
+                  <div className="field">
+                    <label htmlFor="f-name">Your name</label>
+                    <input id="f-name" name="name" autoComplete="given-name" required maxLength={60} placeholder="e.g. Sara" />
+                  </div>
+                  <div className="field">
+                    <label htmlFor="f-company">Company <span className="muted">(optional)</span></label>
+                    <input id="f-company" name="company" autoComplete="organization" maxLength={80} placeholder="e.g. Yarnoo" />
+                  </div>
+                  <div className="field">
+                    <label htmlFor="f-role">Role <span className="muted">(optional)</span></label>
+                    <input id="f-role" name="role" autoComplete="organization-title" maxLength={80} placeholder="e.g. Singer, DJ, Event planner" />
+                  </div>
+                  <button className="block" type="submit" disabled={joining}>{joining ? 'Joining…' : 'Join the room'}</button>
+                  <p className="consent">If you add a company, we use it only to seat you away from your own colleagues, and to show your name to the small group you are matched with. Nothing is shared beyond this event.</p>
+                </form>
+              )}
+            </>
           )}
         </section>
 

@@ -87,6 +87,12 @@ app.get('/api/config', (_req, res) => res.json({
     if (y === 'optional' || s === 'optional') return 'optional';
     return 'off';
   })(),
+  // Public so the join screen can hide doors when the night is over,
+  // instead of only failing after someone taps Continue.
+  event: {
+    status: state.event.status,
+    name: state.event.name
+  },
   doors: {
     // OAuth handoff stays available for later; the guest UI uses contact lookup.
     yarnooHandoff: yarnoo.config.mode !== 'off',

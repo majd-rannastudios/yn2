@@ -323,6 +323,22 @@ label .muted { font-weight: 400; }
 }
 .auth-error::before { content: ''; flex: none; width: 9px; height: 9px; margin-top: 5px; border-radius: 50%; background: var(--coral); }
 
+.join-ended {
+  flex: none;
+  margin-top: 8px;
+  text-align: center;
+}
+.join-ended h2 {
+  font-size: 28px;
+  margin: 0 0 10px;
+}
+.join-ended p {
+  margin: 0 auto;
+  max-width: 26ch;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
 /* --- wheel ---------------------------------------------------------------- */
 
 .wheel-stage {
