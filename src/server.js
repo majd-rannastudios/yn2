@@ -212,7 +212,7 @@ mountDevSignin(app, baseUrl);
 app.post('/api/join', (req, res) => {
   // Members only: RSVP contact lookup, not a form anyone can fill in.
   if (yarnoo.config.mode === 'required' || supabase.config.mode === 'required') {
-    return res.status(403).json({ error: 'Enter the email or phone from your Yarnoo RSVP to join this event.' });
+    return res.status(403).json({ error: 'Join with the email on your Yarnoo account, or the one you reserved with.' });
   }
   const { name, company, role } = req.body || {};
   if (!name || !String(name).trim()) {

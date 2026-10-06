@@ -211,41 +211,42 @@ async function enrichUser(user) {
 }
 
 /**
- * Seat a registered attendee by email or phone — no password.
- * Accounts live on the main Yarnoo platform; this only looks up the RSVP
- * (and optional users row for photo / favorites).
+ * Seat someone by email or phone — no password.
+ * Either identity is enough: a Yarnoo account (`users`) or a reservation
+ * (`event_registrations` for this event). A match on both uses the account
+ * for photo and favorites, and the reservation for the seat.
  */
 export async function enrollByContact({ email, phone } = {}) {
   const em = lower(email);
   const ph = phoneDigits(phone);
   if (!em && !ph) {
-    const err = new Error('Enter the email or phone from your Yarnoo RSVP');
+    const err = new Error('Enter the email on your Yarnoo account, or the one you reserved with');
     err.code = 'invalid';
     throw err;
   }
 
   const reg = await findRegistration({ email: em || undefined, phone: ph || undefined });
-  if (!reg) {
+  const matched = await findUserProfile({
+    email: em || reg?.email,
+    phone: ph || reg?.phone
+  });
+
+  if (!reg && !matched) {
     const err = new Error(
-      `No RSVP found for this ${em ? 'email' : 'phone'} for ${eventName}. Register on Yarnoo, or join as a guest.`
+      `No Yarnoo account or reservation found for this ${em ? 'email' : 'phone'}.`
     );
     err.code = 'not_registered';
     throw err;
   }
 
-  const matched = await findUserProfile({
-    email: em || reg.email,
-    phone: ph || reg.phone
-  });
-
   return {
     id: matched?.id || null,
-    name: (matched?.name || reg.full_name || 'Guest').slice(0, 60),
-    role: (matched?.role || reg.attendee_type || '').slice(0, 80),
+    name: (matched?.name || reg?.full_name || 'Guest').slice(0, 60),
+    role: (matched?.role || reg?.attendee_type || '').slice(0, 80),
     company: (matched?.company || '').slice(0, 80),
     avatarUrl: matched?.avatarUrl || '',
     profileUrl: matched?.profileUrl || '',
-    registrationId: reg.id
+    registrationId: reg?.id || null
   };
 }
 

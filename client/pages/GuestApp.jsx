@@ -516,14 +516,14 @@ export default function GuestApp() {
                 <div className="signin">
                   <form className="contact-door" onSubmit={onEnroll}>
                     <div className="field">
-                      <label htmlFor="f-contact">Join with the email you used to sign up</label>
+                      <label htmlFor="f-contact">Join with your Yarnoo email, or the email you reserved with</label>
                       <input
                         id="f-contact"
                         name="contact"
                         autoComplete="username"
                         required
                         maxLength={120}
-                        placeholder="Email or phone from your Yarnoo account"
+                        placeholder="Yarnoo account or reservation"
                         value={contact}
                         onChange={e => setContact(e.target.value)}
                       />
